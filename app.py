@@ -12,7 +12,7 @@ db = client['expediente_salud']
 
 @app.route('/')
 def home():
-    return "<h1>Servidor del Expediente Único de Salud Activo</h1><p>Perfil: Doctores / Pacientes<
+    return "<h1>Servidor del Expediente Único de Salud Activo</h1><p>Perfil: Doctores / Pacientes<"
 @app.route('/api/pacientes', methods=['POST'])
 def agregar_paciente():
     datos = request.json
