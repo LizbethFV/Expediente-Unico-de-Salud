@@ -309,18 +309,18 @@
 
             <form action="/agendar_cita" method="POST" class="space-y-4">
                     <div class="relative">
-                        <label class="text-[11px] font-bold text-gray-600 uppercase block mb-1">
+                        <label class="text-xs font-bold text-gray-400 uppercase">
                             Paciente (Nombre, CURP o NSS)
                         </label>
-                        <input type="text" id="inputBusquedaAgendaInline" oninput="buscarParaAgendaInline()"
-                            autocomplete="off" placeholder="Escribe para buscar..." required
+                        <input type="text" id="inputBusquedaAgenda" oninput="buscarParaAgenda()" autocomplete="off"
+                            placeholder="Escribe para buscar..."
                             class="w-full bg-slate-50 border border-gray-300 focus:border-blue-500 rounded-xl px-3 py-2 outline-none text-gray-800 font-bold transition text-xs">
 
-                        <div id="sugerenciasAgendaInline"
-                            class="absolute top-full left-0 right-0 bg-white mt-1 rounded-xl shadow-2xl border border-gray-200 hidden z-[200] overflow-hidden max-h-48 overflow-y-auto">
+                        <div id="sugerenciasAgenda"
+                            class="absolute top-full left-0 right-0 bg-white mt-2 rounded-2xl shadow-2xl border border-gray-100 hidden z-[200] overflow-hidden">
                         </div>
 
-                        <input type="hidden" name="curp" id="curpSeleccionadaInline">
+                        <input type="hidden" name="curp" id="curpSeleccionada">
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
