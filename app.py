@@ -73,12 +73,14 @@ def dashboard():
     # ====================================================================
     # NUEVO: CÁLCULO DE INDICADORES SIN ALTERAR TU LÓGICA EXISTENTE
     # ====================================================================
-    fecha_hoy = datetime.now().strftime("%d/%m/%Y")
+    fecha_hoy = datetime.now().strftime("%Y-%m-%d")
     
     # Total de Pacientes pertenecientes a este médico específico
     total_pacientes = len(pacientes_filtrados)
     
     # Consultas registradas el día de hoy en el sistema global
+    # Nota: Si tu formulario de consultas guarda en formato "dd/mm/yyyy", puedes dejar un find alterno. 
+    # Lo ideal es estandarizar a fecha_hoy (YYYY-MM-DD).
     consultas_hoy = db.consultas.count_documents({"fecha": fecha_hoy})
     
     # Conteo dinámico de documentos adjuntos de los pacientes asignados a este doctor
@@ -87,8 +89,12 @@ def dashboard():
         if 'documentos' in p and isinstance(p['documentos'], list):
             documentos_totales += len(p['documentos'])
             
-    # Citas programadas para el día de hoy en la agenda global
-    citas_hoy = db.citas.count_documents({"fecha": fecha_hoy})
+    # CORREGIDO: Citas programadas para HOY, filtrando por el MÉDICO actual y estado "Pendiente"
+    citas_hoy = db.citas.count_documents({
+        "doctor_id": medico_object_id,
+        "fecha": fecha_hoy,
+        "estado": "Pendiente"
+    })
     # ====================================================================
             
     # 4. Pasar las variables procesadas a tu index.html
