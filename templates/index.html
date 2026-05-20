@@ -320,7 +320,7 @@
                             class="absolute top-full left-0 right-0 bg-white mt-2 rounded-2xl shadow-2xl border border-gray-100 hidden z-[200] overflow-hidden">
                         </div>
 
-                        <input type="hidden" name="curp" id="curpSeleccionada">
+                        <input type="hidden" name="curp_paciente" id="curpSeleccionada">
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
@@ -412,23 +412,14 @@
                     </div>
                 `;
 
-                        // Al dar clic, llenamos el input con el nombre y garantizamos que la CURP viaje a Flask
+                        // ¡CAMBIO AQUÍ! Simplificado para asignar el valor directo al input que ya tiene el name correcto
                         div.onclick = () => {
                             input.value = p.nombre;
 
-                            // Buscamos el elemento oculto del formulario
-                            let hiddenCurp = document.getElementById('curpSeleccionada');
-                            if (!hiddenCurp) {
-                                // Si por alguna razón no existe en el HTML, lo creamos dinámicamente para que Flask no reciba null
-                                hiddenCurp = document.createElement('input');
-                                hiddenCurp.type = 'hidden';
-                                hiddenCurp.id = 'curpSeleccionada';
-                                input.parentNode.appendChild(hiddenCurp);
+                            const hiddenCurp = document.getElementById('curpSeleccionada');
+                            if (hiddenCurp) {
+                                hiddenCurp.value = p.curp;
                             }
-
-                            // LE ASIGNAMOS EL NAME CORRECTO PARA EL BACKEND
-                            hiddenCurp.name = 'curp_paciente';
-                            hiddenCurp.value = p.curp;
 
                             lista.classList.add('hidden');
                         };
@@ -505,7 +496,7 @@
         }
         function openModal() { document.getElementById('modalPaciente').classList.replace('hidden', 'flex'); }
         function closeModal() { document.getElementById('modalPaciente').classList.replace('flex', 'hidden'); }
-    </script>
+</script>
 
 
 </body>
