@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Expediente: {{ paciente.nombre }} - EUS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body class="bg-white min-h-screen">
+
+    <nav class="bg-[#f0f7ff] p-4 flex justify-between items-center shadow-md mb-8 px-12 relative">
+        <div class="flex items-center">
+            <a href="/dashboard">
+                <img src="/static/img/logoeuscolor.png" class="w-17 h-14" alt="Logo EUS">
+            </a>
+        </div>
+        <div class="flex space-x-8 text-blue-950 font-bold text-[20px] items-center ml-auto mr-12">
+            <a href="/agenda" class="hover:text-blue-500 transition">Agenda</a>
+            <a href="/pacientes" class="border-b-4 border-blue-600 text-blue-600 pb-1">Pacientes</a>
+            <a href="/consultas" class="hover:text-blue-500 transition">Consultas</a>
+        </div>
+        <div class="relative px-2">
+            <button onclick="toggleDropdown()"
+                class="flex items-center p-2 rounded-2xl hover:bg-gray-50 transition-all focus:outline-none">
+                <div class="w-12 h-12 rounded-full border-2 border-blue-400 overflow-hidden shadow-sm bg-slate-200">
+                    {% if doctor and doctor.foto_url %}
+                    <img src="{{ doctor.foto_url }}" class="w-full h-full object-cover">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center bg-slate-600">
+                        <i class="fas fa-user-md text-white text-xl"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="ml-3 text-left hidden md:block">
+                    <p class="text-sm font-black text-[#242552] truncate w-32">
+                        {{ doctor.username if doctor else 'Médico EUS' }}
+                    </p>
+                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-tighter">
+                        Mi Cuenta <i class="fas fa-chevron-down ml-1"></i>
+                    </p>
+                </div>
+            </button>
+
+            <div id="profileDropdown"
+                class="hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                <a href="/perfil-medico"
+                    class="flex items-center px-5 py-4 text-sm text-[#242552] hover:bg-blue-50 transition-colors border-b border-gray-100 font-bold">
+                    <i class="fas fa-user-circle mr-3 text-blue-600 text-lg"></i> Ver Perfil
+                </a>
+                <a href="/logout"
+                    class="flex items-center px-5 py-4 text-sm text-red-600 hover:bg-red-50 transition-colors font-black">
+                    <i class="fas fa-sign-out-alt mr-3 text-lg"></i> Cerrar Sesión
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-4 pb-12">
+
+        <div class="mb-6">
+            <a href="{{ url_for('perfil_paciente', curp=paciente.curp) }}"
+                class="text-blue-950 font-bold hover:underline text-sm flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i> Volver al perfil
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <div class="bg-white p-8 rounded-sm shadow-xl h-fit">
+                <h3 class="text-lg font-bold text-[#242552] mb-2">Subir Nuevo Documento</h3>
+                <p class="text-xs text-gray-400 mb-6">Añade un nuevo reporte médico o estudio en formato PDF o imagen.
+                </p>
+
+                <form action="{{ url_for('subir_archivo_paciente', curp=paciente.curp) }}" method="POST"
+                    enctype="multipart/form-data" class="space-y-4">
+                    <div>
+                        <input type="file" name="estudio_medico" required
+                            class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    </div>
+                    <button type="submit"
+                        class="w-full bg-blue-950 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition text-sm">
+                        <i class="fas fa-cloud-upload-alt mr-2"></i> Subir al Historial
+                    </button>
+                </form>
+            </div>
+
+            <div class="lg:col-span-2 bg-white p-8 rounded-sm shadow-xl">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-[#242552]">Archivos Clínicos Guardados</h2>
+                        <p class="text-xs text-gray-400 mt-1">Historial de documentos digitales adjuntados</p>
+                    </div>
+                    <span class="bg-blue-950 text-white font-black text-sm px-4 py-1.5 rounded-full">
+                        {{ archivos|length }} documentos
+                    </span>
+                </div>
+
+                {% if archivos %}
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr
+                                class="border-b border-gray-400 text-gray-400 text-xs uppercase tracking-wider font-bold">
+                                <th class="pb-3">Nombre del Archivo</th>
+                                <th class="pb-3">Fecha de Carga</th>
+                                <th class="pb-3 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50 text-sm">
+                            {% for archivo in archivos %}
+                            <tr class="hover:bg-gray-50/70 transition">
+                                <td class="py-4 font-semibold text-slate-700 flex items-center space-x-3">
+                                    <i class="fas fa-file-pdf text-red-500 text-lg"></i>
+                                    <span class="truncate max-w-xs" title="{{ archivo.nombre_archivo }}">{{
+                                        archivo.nombre_archivo }}</span>
+                                </td>
+                                <td class="py-4 text-gray-500 text-xs">
+                                    {{ archivo.fecha_subida }}
+                                </td>
+                                <td class="py-4 text-right">
+                                    <a href="{{ archivo.ruta_archivo }}" target="_blank"
+                                        class="inline-flex items-center space-x-1 bg-blue-50 text-blue-600 px-4 py-2 rounded-xl hover:bg-blue-600 hover:text-white transition text-xs font-bold">
+                                        <i class="fas fa-external-link-alt text-[10px]"></i>
+                                        <span>Visualizar</span>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                    <div class="text-gray-300 text-4xl mb-3">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                    <p class="text-sm text-gray-400 font-medium">Este paciente aún no cuenta con archivos cargados.</p>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+    </main>
+
+</body>
+
+</html>

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda Médica - EUS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+
+    <style>
+        /* Estilos para que el Calendario combine con EUS */
+        :root {
+            /* CAMBIO AQUÍ: De #f0f7ff pasamos a un gris más marcado y visible */
+            --fc-border-color: #cbd5e1;
+
+            --fc-button-bg-color: #242552;
+            --fc-button-border-color: #242552;
+            --fc-button-hover-bg-color: #3b3d75;
+            --fc-today-bg-color: #f0f7ff;
+        }
+
+        /* NUEVA REGLA: Fuerza el color en todas las tablas y celdas del calendario */
+        .fc th,
+        .fc td,
+        .fc-theme-standard td,
+        .fc-theme-standard th {
+            border-color: #cbd5e1 !important;
+        }
+
+        .fc {
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        /* Botones superiores */
+        .fc .fc-button-primary {
+            border-radius: 1rem;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 0.5rem 1.25rem;
+            background-color: #242552;
+            border-color: #242552;
+            transition: all 0.3s;
+        }
+
+        .fc .fc-button-primary:hover {
+            background-color: #3b3d75;
+            border-color: #3b3d75;
+        }
+
+        .fc .fc-button-primary:disabled {
+            background-color: #cccccc;
+            border-color: #cccccc;
+        }
+
+        /* Título del mes */
+        .fc .fc-toolbar-title {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #242552;
+            text-transform: capitalize;
+        }
+
+        /* Encabezado de los días */
+        .fc .fc-col-header-cell-cushion {
+            color: #242552;
+            font-weight: 700;
+            text-decoration: none;
+            padding: 8px 0;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+
+        /* Números de los días */
+        .fc .fc-daygrid-day-number {
+            color: #4b5563;
+            font-weight: 600;
+            padding: 8px;
+            text-decoration: none;
+        }
+
+        /* Eventos internos del calendario */
+        .fc-v-event,
+        .fc-h-event {
+            border: none;
+            padding: 2px 4px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-shadow {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+            border-radius: 1.5rem;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 flex flex-col min-h-screen">
+
+    <nav
+        class="sticky top-0 z-50 w-full bg-[#f0f7ff] border-b border-gray-100 px-12 py-3 flex justify-between items-center shadow-md mb-8 relative">
+        <div class="flex items-center">
+            <a href="/dashboard">
+                <img src="/static/img/logoeuscolor.png" class="w-17 h-14" alt="Logo EUS">
+            </a>
+        </div>
+
+        <div class="flex space-x-8 text-blue-950 font-bold text-[20px] items-center ml-auto mr-12">
+            <a href="/agenda" class="border-b-4 border-blue-600 text-blue-600 pb-1">Agenda</a>
+            <a href="/pacientes" class="hover:text-blue-500 transition">Pacientes</a>
+            <a href="/consultas" class="hover:text-blue-500 transition">Consultas</a>
+        </div>
+
+        <div class="relative px-2">
+            <button onclick="toggleDropdown()"
+                class="flex items-center p-2 rounded-2xl hover:bg-gray-50 transition-all focus:outline-none">
+                <div class="w-12 h-12 rounded-full border-2 border-blue-400 overflow-hidden shadow-sm bg-slate-200">
+                    {% if doctor and doctor.foto_url %}
+                    <img src="{{ doctor.foto_url }}" class="w-full h-full object-cover">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center bg-slate-600">
+                        <i class="fas fa-user-md text-white text-xl"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="ml-3 text-left hidden md:block">
+                    <p class="text-sm font-black text-[#242552] truncate w-32">
+                        {{ doctor.username if doctor else 'Médico EUS' }}
+                    </p>
+                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-tighter">
+                        Mi Cuenta <i class="fas fa-chevron-down ml-1"></i>
+                    </p>
+                </div>
+            </button>
+
+            <div id="profileDropdown"
+                class="hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                <a href="/perfil-medico"
+                    class="flex items-center px-5 py-4 text-sm text-[#242552] hover:bg-blue-50 transition-colors border-b border-gray-100 font-bold">
+                    <i class="fas fa-user-circle mr-3 text-blue-600 text-lg"></i> Ver Perfil
+                </a>
+                <a href="/logout"
+                    class="flex items-center px-5 py-4 text-sm text-red-600 hover:bg-red-50 transition-colors font-black">
+                    <i class="fas fa-sign-out-alt mr-3 text-lg"></i> Cerrar Sesión
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-1 p-4 md:p-8 max-w-[1600px] w-full mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+        <div class="space-y-6 lg:col-span-1">
+
+            <div class="bg-white p-6 rounded-sm shadow-md border border-gray-100 text-center relative overflow-hidden">
+                <div class="absolute -right-6 -bottom-6 text-gray-50 text-7xl font-black">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div
+                    class="bg-blue-50 text-blue-600 w-14 h-14 rounded-sm flex items-center justify-center text-xl font-bold mx-auto mb-4 shadow-sm">
+                    <i class="far fa-calendar-alt"></i>
+                </div>
+                <h3 class="text-xl font-black text-[#242552]">Mi Agenda Médica</h3>
+                <p class="text-xs font-semibold text-gray-400 mt-1">Gestiona, visualiza y planifica las consultas y
+                    citas de tus pacientes asignados de forma integrada.</p>
+            </div>
+
+            <div
+                class="bg-white rounded-sm shadow-md border border-gray-100 overflow-hidden flex flex-col max-h-[350px]">
+                <div class="bg-[#f0f7ff] p-4 border-b border-blue-50 flex justify-between items-center">
+                    <h3 class="font-black text-[#242552] text-sm uppercase tracking-wider">Citas del Mes</h3>
+                    <span class="bg-[#242552] text-white text-xs px-2.5 py-1 rounded-sm font-black shadow-xs">
+                        {{ citas|length }}
+                    </span>
+                </div>
+                <div class="p-4 overflow-y-auto space-y-3 flex-1">
+                    {% for cita in citas %}
+                    <div
+                        class="p-3 bg-gray-50 rounded-sm border border-gray-100 hover:border-blue-200 transition-all flex items-start space-x-3">
+                        <div class="bg-white p-2 rounded-sm border border-gray-400 text-center min-w-[50px] shadow-md">
+                            <span class="text-xs font-black text-[#242552] block uppercase">
+                                {{ cita.fecha.split('/')[-1] if '/' in cita.fecha else 'Cita' }}
+                            </span>
+                            <span class="text-[10px] font-black text-gray-400 block tracking-tighter">
+                                {{ cita.fecha }}
+                            </span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-black text-[#242552] uppercase truncate">
+                                {% if cita.curp_paciente %}
+                                {{ cita.curp_paciente[:10] }}...
+                                {% elif cita.curp %}
+                                {{ cita.curp[:10] }}...
+                                {% else %}
+                                SIN CURP
+                                {% endif %}
+                            </p>
+                            <p class="text-[11px] font-medium text-gray-500 truncate mt-0.5">
+                                <i class="fas fa-stethoscope mr-1 text-blue-500"></i>{{ cita.motivo }}
+                            </p>
+                            <span
+                                class="inline-block bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-0.5 rounded-sm mt-1">
+                                <i class="far fa-clock mr-1"></i>{{ cita.hora }}
+                            </span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fas fa-calendar-minus text-3xl text-gray-200 mb-2 block"></i>
+                        <p class="text-xs font-bold">No hay citas registradas.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-sm shadow-md border border-gray-100">
+                <div class="mb-4 border-b border-gray-100 pb-2">
+                    <h3 class="font-black text-[#242552] text-sm uppercase tracking-wider flex items-center">
+                        <i class="fas fa-plus-circle mr-2 text-blue-600"></i> Agendar Nueva Cita
+                    </h3>
+                </div>
+
+                <form action="/agendar_cita" method="POST" class="space-y-4">
+                    <div class="relative">
+                        <label class="text-[11px] font-bold text-gray-600 uppercase block mb-1">
+                            Paciente (Nombre, CURP o NSS)
+                        </label>
+                        <input type="text" id="inputBusquedaAgendaInline" oninput="buscarParaAgendaInline()"
+                            autocomplete="off" placeholder="Escribe para buscar..." required
+                            class="w-full bg-slate-50 border border-gray-300 focus:border-blue-500 rounded-xl px-3 py-2 outline-none text-gray-800 font-bold transition text-xs">
+
+                        <div id="sugerenciasAgendaInline"
+                            class="absolute top-full left-0 right-0 bg-white mt-1 rounded-xl shadow-2xl border border-gray-200 hidden z-[200] overflow-hidden max-h-48 overflow-y-auto">
+                        </div>
+
+                        <input type="hidden" name="curp" id="curpSeleccionadaInline">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[11px] font-bold text-gray-600 uppercase block mb-1">Fecha</label>
+                            <input type="date" name="fecha" required
+                                class="w-full bg-slate-50 border border-gray-300 focus:border-blue-500 rounded-xl px-3 py-2 outline-none text-[#242552] font-bold transition text-xs">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-gray-600 uppercase block mb-1">Hora</label>
+                            <input type="time" name="hora" required
+                                class="w-full bg-slate-50 border border-gray-300 focus:border-blue-500 rounded-xl px-3 py-2 outline-none text-[#242552] font-bold transition text-xs">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-bold text-gray-600 uppercase block mb-1">
+                            Especialidad / Motivo
+                        </label>
+                        <input type="text" name="motivo" placeholder="Ej. Odontología, Seguimiento..." required
+                            class="w-full bg-slate-50 border border-gray-300 focus:border-blue-500 rounded-xl px-3 py-2 outline-none text-[#242552] font-bold transition text-xs">
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit"
+                            class="w-full px-4 py-2.5 bg-[#242552] text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md hover:bg-blue-700 transition-all">
+                            Confirmar y Agendar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="lg:col-span-3 bg-white p-6 rounded-sm shadow-md border border-gray-100">
+            <div id='calendar'></div>
+        </div>
+
+    </main>
+
+    <footer class="bg-white border-t border-gray-100 py-4 px-6 mt-12 text-center text-xs font-bold text-gray-400">
+        &copy; 2026 EUS México. Todos los derechos reservados.
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'es',
+                height: '750px',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                buttonText: {
+                    today: 'Hoy',
+                    month: 'Mes',
+                    week: 'Semana',
+                    day: 'Día'
+                },
+                events: [
+                    {% for cita in citas %}
+                    {
+                    title: '{{ cita.motivo }} ({% if cita.curp_paciente %}{{ cita.curp_paciente[:5] }}{% elif cita.curp %}{{ cita.curp[:5] }}{% else %}N/A{% endif %})',
+                    start: '{{ cita.fecha }}T{{ cita.hora }}',
+                    backgroundColor: '{% if cita.motivo == "General" %}#3b82f6{% elif cita.motivo == "Odontología" %}#f97316{% else %}#242552{% endif %}',
+                },
+                {% endfor %}
+                ],
+            eventClick: function (info) {
+                alert('Motivo / Paciente: ' + info.event.title + '\nHora Programada: ' + info.event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            }
+            });
+        calendar.render();
+        });
+
+        // Control del Dropdown del Perfil
+        function toggleDropdown() {
+            const dropdown = document.getElementById('profileDropdown');
+            if (dropdown) dropdown.classList.toggle('hidden');
+        }
+
+        window.onclick = function (event) {
+            if (!event.target.closest('button')) {
+                const dropdown = document.getElementById('profileDropdown');
+                if (dropdown && !dropdown.classList.contains('hidden')) {
+                    dropdown.classList.add('hidden');
+                }
+            }
+        }
+
+        // --- FUNCIONES PARA LA BÚSQUEDA ASÍNCRONA INLINE (AJAX) ---
+        function buscarParaAgendaInline() {
+            const query = document.getElementById('inputBusquedaAgendaInline').value.trim();
+            const sugerenciasDiv = document.getElementById('sugerenciasAgendaInline');
+
+            if (query.length < 2) {
+                sugerenciasDiv.classList.add('hidden');
+                return;
+            }
+
+            // Petición AJAX a tu endpoint de búsqueda existente
+            fetch(`/buscar_paciente?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    sugerenciasDiv.innerHTML = '';
+                    if (data.length > 0) {
+                        sugerenciasDiv.classList.remove('hidden');
+                        data.forEach(p => {
+                            const item = document.createElement('div');
+                            item.className = 'px-4 py-2 hover:bg-blue-50 cursor-pointer text-xs font-bold text-gray-700 border-b border-gray-50';
+                            item.innerHTML = `<p class="uppercase text-[#242552]">${p.nombre}</p>
+                                              <p class="text-[10px] text-gray-400 font-medium">CURP: ${p.curp} | NSS: ${p.nss || 'N/A'}</p>`;
+                            item.onclick = function () {
+                                document.getElementById('inputBusquedaAgendaInline').value = p.nombre;
+                                document.getElementById('curpSeleccionadaInline').value = p.curp;
+                                sugerenciasDiv.classList.add('hidden');
+                            };
+                            sugerenciasDiv.appendChild(item);
+                        });
+                    } else {
+                        sugerenciasDiv.innerHTML = '<div class="px-4 py-2 text-xs text-gray-400 font-bold">No se encontraron resultados</div>';
+                        sugerenciasDiv.classList.remove('hidden');
+                    }
+                })
+                .catch(err => console.error("Error buscando pacientes:", err));
+        }
+    </script>
+</body>
+
+</html>

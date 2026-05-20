@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EUS - Registro de Médico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body body class="h-screen flex items-center justify-center p-4 bg-[#f0f7ff]">
+
+    <div class="bg-white rounded-sm shadow-2xl flex max-w-5xl w-full overflow-hidden">
+        <div class="w-full md:w-1/2 p-10">
+            <div class="flex justify-between items-center mb-8">
+                <img src="{{ url_for('static', filename='img/logoeuscolor.png') }}" class="w-14 h-13" alt="Logo EUS">
+            </div>
+
+            <h1 class="text-3xl font-bold text-[#242552] mb-6">Regístrate</h1>
+
+            <form action="/auth/register" method="POST" class="space-y-4" onsubmit="return validarContrasena()">
+                <div>
+                    <label class="text-gray-500 text-sm ml-2">Nombre de usuario</label>
+                    <input type="text" name="usuario" required
+                        class="w-full bg-[#d6e3eb] rounded-xl px-4 py-2 outline-none focus:ring-2 ring-blue-400">
+                </div>
+
+                <div>
+                    <label class="text-gray-500 text-sm ml-2">Correo Electrónico</label>
+                    <input type="email" name="email" required
+                        class="w-full bg-[#d6e3eb] rounded-xl px-4 py-2 outline-none focus:ring-2 ring-blue-400">
+                </div>
+                <div>
+                    <label class="text-gray-500 text-sm ml-2">Cédula Profesional</label>
+                    <input type="text" name="cedula" required placeholder="Ej. 12345678"
+                        class="w-full bg-[#d6e3eb] rounded-xl px-4 py-2 outline-none focus:ring-2 ring-blue-400">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="relative">
+                        <label class="text-gray-500 text-sm ml-2">Contraseña</label>
+                        <input type="password" id="password" name="password" required
+                            class="w-full bg-[#d6e3eb] rounded-xl px-4 py-2 outline-none focus:ring-2 ring-blue-400">
+                        <button type="button" onclick="togglePassword('password', 'eye_reg_1')"
+                            class="absolute right-4 top-8 text-gray-400">
+                            <i id="eye_reg_1" class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <label class="text-gray-500 text-sm ml-2">Confirma Contraseña</label>
+                        <input type="password" id="confirm_password" required
+                            class="w-full bg-[#d6e3eb] rounded-xl px-4 py-2 outline-none focus:ring-2 ring-blue-400">
+                        <button type="button" onclick="togglePassword('confirm_password', 'eye_reg_2')"
+                            class="absolute right-4 top-8 text-gray-400">
+                            <i id="eye_reg_2" class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit"
+                    class="w-full bg-[#242552] text-white font-bold py-3 rounded-xl mt-6 hover:bg-blue-600 transition shadow-lg">
+                    Crear Cuenta
+                </button>
+            </form>
+
+            <p class="text-center mt-6 text-sm text-gray-600">
+                ¿Ya tienes una cuenta? <a href="/" class="text-[#242552] font-bold hover:underline">Inicia Sesión</a>
+            </p>
+        </div>
+
+        <div class="hidden md:block w-1/2">
+            <img src="{{ url_for('static', filename='img/expediente.png') }}" class="h-full w-full object-cover"
+                alt="Medical Tools">
+        </div>
+    </div>
+    <script>
+        function togglePassword(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
+        function validarContrasena() {
+            var pass = document.getElementById("password").value;
+            var confirmPass = document.getElementById("confirm_password").value;
+            if (pass !== confirmPass) {
+                alert("Las contraseñas no coinciden.");
+                return false;
+            }
+            return true;
+        }
+    </script>
+</body>
+
+</html>

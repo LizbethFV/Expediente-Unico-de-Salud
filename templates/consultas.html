@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Consultas - EUS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .bg-eus-dark {
+            background-color: #242552;
+        }
+
+        .text-eus-dark {
+            color: #242552;
+        }
+    </style>
+</head>
+
+<body class="bg-[#f8fbff] min-h-screen">
+
+    <nav
+        class="sticky top-0 z-50 w-full bg-[#f0f7ff] border-b border-gray-100 px-12 py-3 flex justify-between items-center shadow-md mb-8 relative">
+        <div class="flex items-center">
+            <a href="/dashboard">
+                <img src="/static/img/logoeuscolor.png" class="w-17 h-14" alt="Logo EUS">
+            </a>
+        </div>
+
+        <div class="flex space-x-8 text-blue-950 font-bold text-[20px] items-center ml-auto mr-12">
+            <a href="/agenda" class="hover:text-blue-500 transition">Agenda</a>
+            <a href="/pacientes" class="hover:text-blue-500 transition">Pacientes</a>
+            <a href="/consultas" class="border-b-4 border-blue-600 text-blue-600 pb-1">Consultas</a>
+        </div>
+
+        <div class="relative px-2">
+            <button onclick="toggleDropdown()"
+                class="flex items-center p-2 rounded-2xl hover:bg-gray-50 transition-all focus:outline-none">
+                <div class="w-12 h-12 rounded-full border-2 border-blue-400 overflow-hidden shadow-sm bg-slate-200">
+                    {% if doctor and doctor.foto_url %}
+                    <img src="{{ doctor.foto_url }}" class="w-full h-full object-cover">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center bg-slate-600">
+                        <i class="fas fa-user-md text-white text-xl"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="ml-3 text-left hidden md:block">
+                    <p class="text-sm font-black text-[#242552] truncate w-32">
+                        {{ doctor.username if doctor else 'Médico EUS' }}
+                    </p>
+                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-tighter">
+                        Mi Cuenta <i class="fas fa-chevron-down ml-1"></i>
+                    </p>
+                </div>
+            </button>
+
+            <div id="profileDropdown"
+                class="hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+
+                <a href="/perfil-medico"
+                    class="flex items-center px-5 py-4 text-sm text-[#242552] hover:bg-blue-50 transition-colors border-b border-gray-100 font-bold">
+                    <i class="fas fa-user-circle mr-3 text-blue-600 text-lg"></i> Ver Perfil
+                </a>
+
+                <a href="/logout"
+                    class="flex items-center px-5 py-4 text-sm text-red-600 hover:bg-red-50 transition-colors font-black">
+                    <i class="fas fa-sign-out-alt mr-3 text-lg"></i> Cerrar Sesión
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-[1600px] mx-auto px-8 pb-12">
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+            <div class="bg-white p-8 rounded-md shadow-md border-b-4 border-blue-500 transition hover:-translate-y-1">
+                <div class="flex items-center space-x-4">
+                    <div class="bg-blue-50 p-4 rounded-2xl text-blue-500"><i class="fas fa-stethoscope text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">Hoy</p>
+                        <p class="text-3xl font-black text-[#242552]">{{ total_hoy }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-8 rounded-md shadow-md border-b-4 border-green-500 transition hover:-translate-y-1">
+                <div class="flex items-center space-x-4">
+                    <div class="bg-green-50 p-4 rounded-2xl text-green-500"><i class="fas fa-check-circle text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">Eficiencia</p>
+                        <p class="text-3xl font-black text-[#242552]">100%</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-[#242552] p-8 rounded-md shadow-md text-white col-span-2 relative overflow-hidden group">
+                <i
+                    class="fas fa-chart-pie absolute -right-6 -bottom-6 text-white opacity-10 text-9xl group-hover:rotate-12 transition-transform"></i>
+                <p class="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Diagnóstico más frecuente</p>
+                <p class="text-3xl font-bold mt-2 uppercase tracking-tighter">{{ diag_comun }}</p>
+                <p class="text-[10px] font-bold opacity-70 mt-1">Tendencia basada en el historial global</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-12 gap-8">
+            <div class="col-span-12 lg:col-span-5 bg-white p-8 rounded-md shadow-md border border-blue-50 self-start">
+                <h3 class="text-[#242552] font-black text-xs uppercase mb-6 tracking-widest">Afluencia de Pacientes</h3>
+                <div class="h-[300px]">
+                    <canvas id="chartConsultas"></canvas>
+                </div>
+            </div>
+
+            <div class="col-span-12 lg:col-span-7 bg-white rounded-md shadow-md overflow-hidden border border-blue-50">
+                <div class="p-8 border-b border-gray-50 flex justify-between items-center">
+                    <h2 class="text-[#242552] font-black text-xl">Historial Reciente</h2>
+                    <input type="text" placeholder="Filtrar..."
+                        class="bg-gray-50 rounded-full px-6 py-2 text-xs outline-none">
+                </div>
+                <div class="p-8">
+                    <table class="w-full" id="tablaConsultas">
+                        <thead>
+                            <tr
+                                class="text-gray-300 border-b border-gray-50 uppercase text-[9px] font-black tracking-[0.2em]">
+                                <th class="pb-6 px-4 text-left">Fecha y Hora</th>
+                                <th class="pb-6 px-4 text-left">Identificador Paciente</th>
+                                <th class="pb-6 px-4 text-left">Diagnóstico Emitido</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            {% for c in consultas %}
+                            <tr class="hover:bg-blue-50/30 transition-colors group fila-consulta">
+                                <td class="py-6 px-4">
+                                    <p class="text-xs font-black text-[#242552]">{{ c.fecha }}</p>
+                                    <p class="text-[10px] text-blue-400 font-bold">{{ c.hora }}</p>
+                                </td>
+                                <td class="py-6 px-4">
+                                    <p class="font-black text-[#242552] text-[11px] uppercase tracking-tighter">{{
+                                        c.curp_paciente }}</p>
+                                    <p class="text-[9px] text-gray-300 font-bold uppercase">{{ c.motivo }}</p>
+                                </td>
+                                <td class="py-6 px-4">
+                                    <span
+                                        class="diag-label bg-white border border-blue-100 text-[#242552] px-4 py-1.5 rounded-lg text-[9px] font-black uppercase shadow-sm">
+                                        {{ c.diagnostico }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const ctx = document.getElementById('chartConsultas').getContext('2d');
+
+        // Datos inyectados desde Python
+        const labelsX = {{ labels_x | tojson }};
+        const dataY = {{ datos_y | tojson }};
+
+        // Calcular el máximo para que el Eje Y se adapte
+        const maxValor = Math.max(...dataY);
+
+        new Chart(ctx, {
+            type: 'bar', // Tipo barra para ver claramente el volumen por día
+            data: {
+                labels: labelsX,
+                datasets: [{
+                    label: 'Número de Pacientes',
+                    data: dataY,
+                    backgroundColor: '#242552',
+                    borderRadius: 15, // Barras redondeadas al estilo EUS
+                    hoverBackgroundColor: '#3b82f6'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        suggestedMax: maxValor + 1, // Ajuste automático del máximo
+                        ticks: {
+                            stepSize: 1, // Solo números enteros
+                            font: { weight: 'bold' }
+                        },
+                        grid: { borderDash: [5, 5], color: '#f0f0f0' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { weight: 'bold' } }
+                    }
+                }
+            }
+        });
+        function toggleDropdown() {
+            const dropdown = document.getElementById('profileDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+
+        // Cierra el menú si hacen clic en cualquier otra parte de la pantalla
+        window.onclick = function (event) {
+            if (!event.target.closest('button')) {
+                const dropdown = document.getElementById('profileDropdown');
+                if (dropdown && !dropdown.classList.contains('hidden')) {
+                    dropdown.classList.add('hidden');
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

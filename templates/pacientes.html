@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Directorio de Pacientes - EUS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body class="min-h-screen font-sans">
+    <nav class="bg-[#f0f7ff] p-3 flex justify-between items-center shadow-md mb-8 px-12 relative">
+        <div class="flex items-center">
+            <a href="/dashboard">
+                <img src="/static/img/logoeuscolor.png" class="w-17 h-14" alt="Logo EUS">
+            </a>
+        </div>
+
+        <div class="flex space-x-8 text-blue-950 font-bold text-[20px] items-center ml-auto mr-12">
+            <a href="/agenda" class="hover:text-blue-500 transition">Agenda</a>
+            <a href="/pacientes" class="border-b-4 border-blue-600 text-blue-600 pb-1">Pacientes</a>
+            <a href="/consultas" class="hover:text-blue-500 transition">Consultas</a>
+        </div>
+
+        <div class="relative px-2">
+            <button onclick="toggleDropdown()"
+                class="flex items-center p-2 rounded-2xl hover:bg-gray-50 transition-all focus:outline-none">
+                <div class="w-12 h-12 rounded-full border-2 border-blue-400 overflow-hidden shadow-sm bg-slate-200">
+                    {% if doctor and doctor.foto_url %}
+                    <img src="{{ doctor.foto_url }}" class="w-full h-full object-cover">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center bg-slate-600">
+                        <i class="fas fa-user-md text-white text-xl"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="ml-3 text-left hidden md:block">
+                    <p class="text-sm font-black text-[#242552] truncate w-32">
+                        {{ doctor.username if doctor else 'Médico EUS' }}
+                    </p>
+                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-tighter">
+                        Mi Cuenta <i class="fas fa-chevron-down ml-1"></i>
+                    </p>
+                </div>
+            </button>
+
+            <div id="profileDropdown"
+                class="hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+
+                <a href="/perfil-medico"
+                    class="flex items-center px-5 py-4 text-sm text-[#242552] hover:bg-blue-50 transition-colors border-b border-gray-100 font-bold">
+                    <i class="fas fa-user-circle mr-3 text-blue-600 text-lg"></i> Ver Perfil
+                </a>
+
+                <a href="/logout"
+                    class="flex items-center px-5 py-4 text-sm text-red-600 hover:bg-red-50 transition-colors font-black">
+                    <i class="fas fa-sign-out-alt mr-3 text-lg"></i> Cerrar Sesión
+                </a>
+            </div>
+        </div>
+    </nav>
+    <main class="max-w-7xl mx-auto px-4">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-5">
+            <div>
+                <h1 class="text-3xl font-black text-[#242552]">DIRECTORIO DE PACIENTES</h1>
+                <p class="text-gray-500 font-medium">Gestiona y visualiza el historial de tu clínica.</p>
+            </div>
+
+            <div class="relative w-full md:w-96">
+                <input type="text" id="buscadorPacientes" onkeyup="filtrarPacientes()"
+                    placeholder="Buscar por nombre o CURP..."
+                    class="rounded-xl py-3 px-12 w-full outline-none focus:ring-2 ring-blue-300 text-base shadow-md border border-gray-100">
+                <i class="fas fa-search absolute left-4 top-4 text-gray-400"></i>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow-md mb-8 border border-gray-100 relative">
+            <h3 class="text-sm font-black text-[#242552] uppercase mb-3 tracking-wide flex items-center">
+                <i class="fas fa-search-plus mr-2 text-blue-500"></i> Vincular Paciente Existente por CURP
+            </h3>
+            <form action="{{ url_for('add_patient') }}" method="POST" class="flex flex-col sm:flex-row gap-4 relative">
+                <div class="flex-grow relative">
+                    <input type="text" id="curp_buscar" name="curp_buscar" placeholder="INGRESA LA CURP DEL PACIENTE"
+                        required autocomplete="off" oninput="buscarSugerenciasVincular(this.value)"
+                        class="w-full uppercase bg-gray-50 border border-gray-200 px-5 py-3 rounded-xl font-bold text-xs tracking-widest text-[#242552] focus:outline-none focus:border-blue-500">
+
+                    <div id="listaSugerenciasVincular"
+                        class="hidden absolute left-0 right-0 top-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50 divide-y divide-gray-50">
+                    </div>
+                </div>
+                <button type="submit"
+                    class="bg-[#242552] hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl text-xs uppercase tracking-wider transition active:scale-95 whitespace-nowrap h-fit sm:self-center">
+                    Buscar e Importar
+                </button>
+            </form>
+        </div>
+        <div class="bg-white rounded-md shadow-xl overflow-hidden border border-gray-100">
+            <table class="w-full text-left" id="tablaPacientes">
+                <thead>
+                    <tr class="bg-[#242552] text-white">
+                        <th class="px-6 py-4 font-bold uppercase text-sm">No. Exp</th>
+                        <th class="px-6 py-4 font-bold uppercase text-sm">Nombre Completo</th>
+                        <th class="px-6 py-4 font-bold uppercase text-sm">CURP</th>
+                        <th class="px-6 py-4 font-bold uppercase text-sm">Última Consulta</th>
+                        <th class="px-6 py-4 font-bold uppercase text-sm text-center">Estado</th>
+                        <th class="px-6 py-4 font-bold uppercase text-sm text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% if pacientes_completos %}
+                    {% for p in pacientes_completos %}
+                    <tr class="hover:bg-blue-50 transition fila-paciente">
+                        <td class="py-4 px-6 text-gray-700 font-bold text-sm">
+                            {{ p.no_expediente }}
+                        </td>
+
+                        <td class="py-4 px-6">
+                            <div class="flex items-center">
+                                <div
+                                    class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-3 font-black text-xs uppercase">
+                                    {{ p.nombre[:1] }}
+                                </div>
+                                <span class="font-bold text-[#242552] nombre-paciente uppercase">
+                                    {{ p.nombre }}
+                                </span>
+                            </div>
+                        </td>
+
+                        <td class="py-4 px-6 text-gray-500 font-mono text-sm curp-paciente uppercase">
+                            {{ p.curp }}
+                        </td>
+
+                        <td class="py-4 px-6 text-gray-400 text-xs font-medium">
+                            {{ p.ultima_visita if p.ultima_visita else 'Sin visitas' }}
+                        </td>
+
+                        <td class="py-4 px-6 text-center">
+                            <span
+                                class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-black uppercase inline-block">
+                                {{ p.estado if p.estado else 'Activo' }}
+                            </span>
+                        </td>
+
+                        <td class="py-4 px-6 text-right">
+                            <a href="{{ url_for('perfil_paciente', curp=p.curp) }}"
+                                class="text-blue-600 font-bold hover:underline text-sm">
+                                Ver Perfil
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-400 font-bold text-sm">
+                            <i class="fas fa-users-slash text-4xl mb-3 block text-gray-200"></i>
+                            No tienes pacientes registrados en tu directorio.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <script>
+            function filtrarPacientes() {
+                // 1. Tomamos el texto del buscador y lo pasamos a mayúsculas
+                let input = document.getElementById("buscadorPacientes");
+                let filter = input.value.toUpperCase().strip ? input.value.toUpperCase().strip() : input.value.toUpperCase();
+
+                // 2. Apuntamos a la tabla y a todas las filas del cuerpo
+                let tabla = document.getElementById("tablaPacientes");
+                let filas = tabla.getElementsByClassName("fila-paciente");
+
+                // 3. Recorremos cada fila para validar si coincide con la búsqueda
+                for (let i = 0; i < filas.length; i++) {
+                    // Buscamos las clases específicas que dejamos en tu nuevo diseño
+                    let elementoNombre = filas[i].querySelector(".nombre-paciente");
+                    let elementoCurp = filas[i].querySelector(".curp-paciente");
+
+                    if (elementoNombre || elementoCurp) {
+                        let nombreTexto = elementoNombre ? (elementoNombre.textContent || elementoNombre.innerText) : "";
+                        let curpTexto = elementoCurp ? (elementoCurp.textContent || elementoCurp.innerText) : "";
+
+                        // 4. Si el buscador está vacío o coincide con el Nombre o la CURP, se muestra la fila
+                        if (nombreTexto.toUpperCase().includes(filter) || curpTexto.toUpperCase().includes(filter)) {
+                            filas[i].style.display = "";
+                        } else {
+                            filas[i].style.display = "none"; // Si no coincide, se oculta de la vista
+                        }
+                    }
+                }
+            }
+            function toggleDropdown() {
+                const dropdown = document.getElementById('profileDropdown');
+                dropdown.classList.toggle('hidden');
+            }
+
+            window.onclick = function (event) {
+                if (!event.target.closest('button')) {
+                    const dropdown = document.getElementById('profileDropdown');
+                    if (dropdown && !dropdown.classList.contains('hidden')) {
+                        dropdown.classList.add('hidden');
+                    }
+                }
+            }
+            async function buscarSugerenciasVincular(texto) {
+                const lista = document.getElementById('listaSugerenciasVincular');
+                const query = texto.trim().toUpperCase();
+
+                // Empezamos a buscar a partir de la tercera letra para optimizar rendimiento
+                if (query.length < 3) {
+                    lista.innerHTML = '';
+                    lista.classList.add('hidden');
+                    return;
+                }
+
+                try {
+                    // Llamamos a la API que busca coincidencias en toda la BD
+                    const respuesta = await fetch(`/api/sugerencias_vincular?q=${query}`);
+                    const pacientes = await respuesta.json();
+
+                    lista.innerHTML = '';
+
+                    if (pacientes.length > 0) {
+                        pacientes.forEach(p => {
+                            // Creamos cada elemento cliqueable de la sugerencia
+                            const div = document.createElement('div');
+                            div.className = "p-3 hover:bg-blue-50 cursor-pointer transition text-left flex flex-col";
+                            div.innerHTML = `
+                    <span class="font-black text-[#242552] text-xs uppercase">${p.nombre}</span>
+                    <span class="text-[10px] text-gray-400 font-mono tracking-wider">${p.curp}</span>
+                `;
+
+                            // Al hacer clic, asignamos la CURP elegida al input y ocultamos la lista
+                            div.onclick = () => {
+                                document.getElementById('curp_buscar').value = p.curp;
+                                lista.classList.add('hidden');
+                            };
+
+                            lista.appendChild(div);
+                        });
+                        lista.classList.remove('hidden');
+                    } else {
+                        // Mensaje amigable si no hay coincidencias globales
+                        lista.innerHTML = `<div class="p-4 text-center text-xs text-gray-400 font-bold">No se encontraron pacientes registrados con esos datos</div>`;
+                        lista.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error("Error al obtener sugerencias para vincular:", error);
+                }
+            }
+
+            // Cierra automáticamente la lista flotante si el médico hace clic en otra parte de la pantalla
+            document.addEventListener('click', (e) => {
+                const input = document.getElementById('curp_buscar');
+                const lista = document.getElementById('listaSugerenciasVincular');
+                if (input && lista && !input.contains(e.target) && !lista.contains(e.target)) {
+                    lista.classList.add('hidden');
+                }
+            });
+        </script>
+    </main>
+
+</body>
+
+</html>

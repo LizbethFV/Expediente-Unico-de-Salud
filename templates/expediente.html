@@ -1,0 +1,1762 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>EUS - Expediente Clínico Oficial</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        /* Estilos CSS personalizados */
+        .hoja-pdf {
+            width: 210mm;
+            /* Ancho estándar A4 */
+            min-height: 297mm;
+            /* Alto estándar A4 */
+            padding: 15mm;
+            margin: 0 auto;
+            /* Centra la hoja en pantalla */
+            background: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            /* Sombra decorativa */
+            position: relative;
+            font-family: 'Times New Roman', Times, serif;
+            /* Fuente formal para documentos */
+        }
+
+        /* Clase para los campos que se llenan dinámicamente */
+        .linea-dato {
+            border-bottom: 1px solid black;
+            /* Simula una línea de escritura */
+            display: inline-block;
+            min-width: 50px;
+            padding: 0 5px;
+            font-weight: bold;
+            color: #242552;
+            font-size: 12px;
+        }
+
+        .etiqueta-doc {
+            font-size: 12px;
+            font-weight: normal;
+        }
+
+        /* Grid para organizar antecedentes en 3 columnas */
+        .grid-patologicos {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        /* Lógica para ocultar/mostrar pasos del asistente */
+        .step-content {
+            display: none;
+        }
+
+        .step-content.active {
+            display: block;
+        }
+
+        @media screen {
+            .hoja-pdf {
+                margin-bottom: 50px;
+                /* Espacio de separación en pantalla */
+                display: block;
+                /* Asegura que no intenten ponerse una al lado de la otra */
+            }
+        }
+
+        /* Ajustes específicos para cuando se presiona "Imprimir" */
+        @media print {
+            .no-print {
+                display: none;
+
+            }
+
+            .salto-pagina {
+                page-break-after: always;
+            }
+
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            @page {
+                margin: 0;
+                size: auto;
+            }
+
+            /* Oculta el panel del asistente */
+            .hoja-pdf {
+                box-shadow: none !important;
+                margin: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                padding: 10mm 15mm !important;
+                /* Ajusta el padding superior para el logo */
+                position: relative;
+                /* Evita que el navegador meta saltos extra por accidente */
+                page-break-inside: avoid;
+            }
+
+            /* Ajusta la hoja al papel */
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 py-10">
+    <div class="no-print fixed left-5 top-10 w-96 bg-white p-6 rounded-sm shadow-2xl z-50 max-h-[90vh] overflow-y-auto">
+        <div class="mb-6">
+            <a href="{{ url_for('perfil_paciente', curp=paciente.curp) }}"
+                class="text-[#242552] font-bold hover:underline text-sm flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i> Volver al perfil de {{ paciente.nombre }}
+            </a>
+        </div>
+        <h3 class="font-black text-[#242552] mb-4 border-b pb-2 flex items-center">
+            <i class="fas fa-user-md mr-2"></i> ASISTENTE MÉDICO
+            <a href="/dashboard" class="ml-auto flex items-center space-x-2 hover:opacity-80 transition">
+                <img src="/static/img/logoeuscolor.png" class="h-10 w-auto object-contain">
+            </a>
+        </h3>
+
+        <div id="asistente-preguntas">
+            <div id="q-step-1" class="step-content active">
+                <p class="text-sm uppercase font-bold mb-3">Paso 1: Información General</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Sexo:</label>
+                        <select onchange="updateDoc('sexo_val', this.value)"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="FEMENINO">FEMENINO</option>
+                            <option value="MASCULINO">MASCULINO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Fecha de Nacimiento
+                            (DD/MM/AAAA):</label>
+                        <input type="text" oninput="updateDoc('fecha_nac_val', this.value)"
+                            value="{{ paciente.expediente_datos.fecha_nac if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Domicilio:</label>
+                        <input type="text" oninput="updateDoc('domicilio_val', this.value)"
+                            value="{{ paciente.expediente_datos.domicilio if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Tipo de Sangre:</label>
+                        <input type="text" oninput="updateDoc('tipo_sangre_val', this.value)"
+                            value="{{ paciente.expediente_datos.tipo_sangre if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Religión:</label>
+                        <input type="text" oninput="updateDoc('religion_val', this.value)"
+                            value="{{ paciente.expediente_datos.religion if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Discapacidad:</label>
+                        <select onchange="updateDoc('discapacidad_val', this.value)"
+                            value="{{ paciente.expediente_datos.discapacidad if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">¿Cuál?:</label>
+                        <input type="text" oninput="updateDoc('tipo_disc_val', this.value)"
+                            value="{{ paciente.expediente_datos.tipo_disc if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Ocupación:</label>
+                        <input type="text" oninput="updateDoc('ocupacion_val', this.value)"
+                            value="{{ paciente.expediente_datos.ocupacion if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Estado Civil:</label>
+                        <select onchange="updateDoc('est_civil_val', this.value)"
+                            value="{{ paciente.expediente_datos.est_civil if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="SOLTERO">SOLTER@</option>
+                            <option value="CASADO">CASAD@</option>
+                            <option value="DIVORCIADO">DIVORCIAD@</option>
+                            <option value="VIUDO">VIUD@</option>
+                            <option value="CONCUBINATO">CONCUBINATO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Informante (parentesco):</label>
+                        <input type="text" oninput="updateDoc('informante_val', this.value)"
+                            value="{{ paciente.expediente_datos.informante if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                </div>
+            </div>
+            <div id="q-step-2" class="step-content">
+                <p class="text-sm uppercase font-bold mb-3">Paso 2: Signos Vitales</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Temperatura °C</label>
+                        <input type="text" oninput="updateDoc('temp_inf', this.value)"
+                            value="{{ paciente.expediente_datos.temp if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Frecuencia Cardiaca (lpm):</label>
+                        <input type="text" oninput="updateDoc('frec_cardiaca_val', this.value)"
+                            value="{{ paciente.expediente_datos.frec_cardiaca if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Presión Arterial (mm Hg):</label>
+                        <input type="text" oninput="updateDoc('pres_arterial_val', this.value)"
+                            value="{{ paciente.expediente_datos.pres_arterial if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Frecuecia Respiratoria (rpm):</label>
+                        <input type="text" oninput="updateDoc('frec_respiratoria_val', this.value)"
+                            value="{{ paciente.expediente_datos.frec_respiratoria if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                </div>
+            </div>
+            <div id="q-step-3" class="step-content">
+                <p class="text-sm uppercase font-bold mb-3">Paso 3: Antecedentes Personales Patológicos</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Enfermedades propias de la
+                            infancia:</label>
+                        <input type="text" oninput="updateDoc('enf_inf', this.value)"
+                            value="{{ paciente.expediente_datos.enf_inf if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Hepatitis:</label>
+                        <select onchange="updateDoc('hepatitis_val', this.value)"
+                            value="{{ paciente.expediente_datos.hepatitis if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">ETS:</label>
+                        <select onchange="updateDoc('ets_inf', this.value)"
+                            value="{{ paciente.expediente_datos.ets if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Infección por VIH:</label>
+                        <select onchange="updateDoc('vih_val', this.value)"
+                            value="{{ paciente.expediente_datos.vih if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Infecciones Entéricas:</label>
+                        <select onchange="updateDoc('inf_entericas_val', this.value)"
+                            value="{{ paciente.expediente_datos.inf_entericas if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Amebiasis:</label>
+                        <select onchange="updateDoc('amebiasis_val', this.value)"
+                            value="{{ paciente.expediente_datos.amebiasis if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Otra Parasitosis:</label>
+                        <input type="text" oninput="updateDoc('otra_parasitosis_val', this.value)"
+                            value="{{ paciente.expediente_datos.otra_parasitosis if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Amigdalitis:</label>
+                        <select onchange="updateDoc('amigdalitis_val', this.value)"
+                            value="{{ paciente.expediente_datos.amigdalitis if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Otitis:</label>
+                        <select onchange="updateDoc('otitis_val', this.value)"
+                            value="{{ paciente.expediente_datos.otitis if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Sinusitis:</label>
+                        <select onchange="updateDoc('sinusitis_val', this.value)"
+                            value="{{ paciente.expediente_datos.sinusitis if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Fiebre Reumática:</label>
+                        <select onchange="updateDoc('fieb_reumatica_val', this.value)"
+                            value="{{ paciente.expediente_datos.fieb_reumatica if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Neumonía:</label>
+                        <select onchange="updateDoc('neumonia_val', this.value)"
+                            value="{{ paciente.expediente_datos.neumonia if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Pulmonía:</label>
+                        <select onchange="updateDoc('pulmonia_val', this.value)"
+                            value="{{ paciente.expediente_datos.pulmonia if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Infecciones Respiratorias
+                            Frecuentes:</label>
+                        <select onchange="updateDoc('inf_resp_frec_val', this.value)"
+                            value="{{ paciente.expediente_datos.inf_resp_frec if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Epitaxis Frecuentes:</label>
+                        <select onchange="updateDoc('epitaxis_val', this.value)"
+                            value="{{ paciente.expediente_datos.epitaxis if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Tuberculosis:</label>
+                        <select onchange="updateDoc('tuberculosis_val', this.value)"
+                            value="{{ paciente.expediente_datos.tuberculosis if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Anemia:</label>
+                        <select onchange="updateDoc('anemia_val', this.value)"
+                            value="{{ paciente.expediente_datos.anemia if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Hemoptisis:</label>
+                        <select onchange="updateDoc('hemoptisis_val', this.value)"
+                            value="{{ paciente.expediente_datos.hemoptisis if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Úlcera péptica:</label>
+                        <select onchange="updateDoc('ulcera_peptica_val', this.value)"
+                            value="{{ paciente.expediente_datos.ulcera_peptica if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Diabetes Mellitus:</label>
+                        <select onchange="updateDoc('diabetes_mellitus_val', this.value)"
+                            value="{{ paciente.expediente_datos.diabetes_mellitus if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Enfermedad Biliar:</label>
+                        <select onchange="updateDoc('biliar_val', this.value)"
+                            value="{{ paciente.expediente_datos.biliar if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Ictericia:</label>
+                        <select onchange="updateDoc('ictericia_val', this.value)"
+                            value="{{ paciente.expediente_datos.ictericia if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Pancreatitis:</label>
+                        <select onchange="updateDoc('pancreatitis_val', this.value)"
+                            value="{{ paciente.expediente_datos.pancreatitis if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Hemorragia Digestiva:</label>
+                        <select onchange="updateDoc('hemorragia_digestiva_val', this.value)"
+                            value="{{ paciente.expediente_datos.hemorragia_digestiva if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Enfermedad Cardiovascular:</label>
+                        <input type="text" oninput="updateDoc('enf_cardvas_val', this.value)"
+                            value="{{ paciente.expediente_datos.enf_cardvas if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Hipertensión Arterial:</label>
+                        <select onchange="updateDoc('hiper_arterial_val', this.value)"
+                            value="{{ paciente.expediente_datos.hiper_arterial if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Enfermedades Hemorrágicas:</label>
+                        <input type="text" oninput="updateDoc('enf_hemorra_val', this.value)"
+                            value="{{ paciente.expediente_datos.enf_hemorra if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Cáncer y Otros Tumores:</label>
+                        <input type="text" oninput="updateDoc('can_o_tum_val', this.value)"
+                            value="{{ paciente.expediente_datos.can_o_tum if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Tabaquismo:</label>
+                        <select onchange="updateDoc('tab_val', this.value)"
+                            value="{{ paciente.expediente_datos.tab if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Cigarrillos al Día:</label>
+                        <input type="text" oninput="updateDoc('cigarros_diarios_val', this.value)"
+                            value="{{ paciente.expediente_datos.cigarros_diarios if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Años Fumando:</label>
+                        <input type="text" oninput="updateDoc('años_fumando_val', this.value)"
+                            value="{{ paciente.expediente_datos.años_fumando if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Alchoholismo:</label>
+                        <select onchange="updateDoc('alcoholismo_val', this.value)"
+                            value="{{ paciente.expediente_datos.alcoholismo if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">No. Copas a la Semana:</label>
+                        <input type="text" oninput="updateDoc('copas_semana_val', this.value)"
+                            value="{{ paciente.expediente_datos.copas_semana if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Años Tomando:</label>
+                        <input type="text" oninput="updateDoc('años_tomando_val', this.value)"
+                            value="{{ paciente.expediente_datos.años_tomando if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Uso Actual de Drogas</label>
+                        <select onchange="updateDoc('drogas_val', this.value)"
+                            value="{{ paciente.expediente_datos.drogas if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">¿Cuáles?:</label>
+                        <input type="text" oninput="updateDoc('cuales_drogas_val', this.value)"
+                            value="{{ paciente.expediente_datos.cuales_drogas if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Transfusiones Sanguíneas:</label>
+                        <select onchange="updateDoc('transfu_sang_val', this.value)"
+                            value="{{ paciente.expediente_datos.transfu_sang if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">No. de Transfusiones
+                            Sanguíneas:</label>
+                        <input type="text" oninput="updateDoc('num_transfusiones_val', this.value)"
+                            value="{{ paciente.expediente_datos.num_transfusiones if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Traumatismos:</label>
+                        <select onchange="updateDoc('traumatismos_val', this.value)"
+                            value="{{ paciente.expediente_datos.traumatismos if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Cirugías:</label>
+                        <select onchange="updateDoc('cirugias_val', this.value)"
+                            value="{{ paciente.expediente_datos.cirugias if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Hospitalizaciones Previas:</label>
+                        <select onchange="updateDoc('hospitalizaciones_val', this.value)"
+                            value="{{ paciente.expediente_datos.hospitalizaciones if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div id="q-step-4" class="step-content">
+                <p class="text-sm uppercase font-bold mb-3">Paso 4: Hipersensibilidad y Alergias</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Medicamentos:</label>
+                        <select onchange="updateDoc('medicamentos_val', this.value)"
+                            value="{{ paciente.expediente_datos.medicamentos if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">¿Cuáles?:</label>
+                        <input type="text" oninput="updateDoc('cuales_med_inf', this.value)"
+                            value="{{ paciente.expediente_datos.cuales_medicamentos if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Alimentos:</label>
+                        <select onchange="updateDoc('alimentos_val', this.value)"
+                            value="{{ paciente.expediente_datos.alimentos if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">¿Cuáles?:</label>
+                        <input type="text" oninput="updateDoc('cuales_alimentos_inf', this.value)"
+                            value="{{ paciente.expediente_datos.cuales_alimentos if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Atibioticos:</label>
+                        <select onchange="updateDoc('antibioticos_val', this.value)"
+                            value="{{ paciente.expediente_datos.antibioticos if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">¿Cuáles?:</label>
+                        <input type="text" oninput="updateDoc('cuales_antibioticos_inf', this.value)"
+                            value="{{ paciente.expediente_datos.cuales_antibioticos if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Sulfas:</label>
+                        <select onchange="updateDoc('sulfas_val', this.value)"
+                            value="{{ paciente.expediente_datos.sulfas if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">¿Cuáles?:</label>
+                        <input type="text" oninput="updateDoc('cuales_sulfas_inf', this.value)"
+                            value="{{ paciente.expediente_datos.cuales_sulfas if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Yodo:</label>
+                        <select onchange="updateDoc('yodo_val', this.value)"
+                            value="{{ paciente.expediente_datos.yodo if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">¿Cuáles?:</label>
+                        <input type="text" oninput="updateDoc('cuales_yodo_inf', this.value)"
+                            value="{{ paciente.expediente_datos.cuales_yodo if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Otros:</label>
+                        <select onchange="updateDoc('otros_val', this.value)"
+                            value="{{ paciente.expediente_datos.otros if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">¿Cuáles?:</label>
+                        <input type="text" oninput="updateDoc('cuales_otros_inf', this.value)"
+                            value="{{ paciente.expediente_datos.cuales_otros if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                </div>
+            </div>
+            <div id="q-step-5" class="step-content">
+                <p class="text-sm uppercase font-bold mb-3">Paso 5: Antecedentes Personales No Patológicos (Vacunas)</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Hepatitis B:</label>
+                        <select onchange="updateDoc('hepatitis_vac_val', this.value)"
+                            value="{{ paciente.expediente_datos.hepatitis_vac if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Poliomelitis:</label>
+                        <select onchange="updateDoc('poliomelitis_val', this.value)"
+                            value="{{ paciente.expediente_datos.poliomelitis if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Rotavirus:</label>
+                        <select onchange="updateDoc('rotavirus_val', this.value)"
+                            value="{{ paciente.expediente_datos.rotavirus if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Triple Viral SRP y SR:</label>
+                        <select onchange="updateDoc('triple_viral_val', this.value)"
+                            value="{{ paciente.expediente_datos.triple_viral if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">BCG:</label>
+                        <select onchange="updateDoc('bcg_val', this.value)"
+                            value="{{ paciente.expediente_datos.bcg if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Neumococo:</label>
+                        <select onchange="updateDoc('neumococo_val', this.value)"
+                            value="{{ paciente.expediente_datos.neumococo if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Pentavalente:</label>
+                        <select onchange="updateDoc('pentavalente_val', this.value)"
+                            value="{{ paciente.expediente_datos.pentavalente if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">DPT:</label>
+                        <select onchange="updateDoc('dpt_val', this.value)"
+                            value="{{ paciente.expediente_datos.dpt if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Td:</label>
+                        <select onchange="updateDoc('td_val', this.value)"
+                            value="{{ paciente.expediente_datos.td if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Influenza:</label>
+                        <select onchange="updateDoc('influenza_val', this.value)"
+                            value="{{ paciente.expediente_datos.influenza if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">VPH:</label>
+                        <select onchange="updateDoc('vph_val', this.value)"
+                            value="{{ paciente.expediente_datos.vph if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Tdpa:</label>
+                        <select onchange="updateDoc('tdpa_val', this.value)"
+                            value="{{ paciente.expediente_datos.tdpa if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Covid-19:</label>
+                        <select onchange="updateDoc('covid_val', this.value)"
+                            value="{{ paciente.expediente_datos.covid if paciente.expediente_datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div id="q-step-6" class="step-content">
+                <p class="text-sm uppercase font-bold mb-3">Antecedentes Familiares</p>
+                <div class="space-y-4">
+                    <p class="text-xs font-black text-blue-900 border-b">MADRE</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs uppercase font-black text-gray-400">Alzheimer:</label>
+                            <select onchange="updateDoc('m_alzheimer', this.value)"
+                                value="{{ paciente.expediente_datos.m_alzheimer if paciente.expediente_datos else '' }}"
+                                class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                                <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                                <option value="NO">NO</option>
+                                <option value="SI">SI</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs uppercase font-black text-gray-400">Diabetes:</label>
+                            <select onchange="updateDoc('m_diabetes', this.value)"
+                                value="{{ paciente.expediente_datos.m_diabetes if paciente.expediente_datos else '' }}"
+                                class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                                <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                                <option value="NO">NO</option>
+                                <option value="SI">SI</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs uppercase font-black text-gray-400">Hipertensión:</label>
+                            <select onchange="updateDoc('m_hipertension', this.value)"
+                                value="{{ paciente.expediente_datos.m_hipertension if paciente.expediente_datos else '' }}"
+                                class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                                <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                                <option value="NO">NO</option>
+                                <option value="SI">SI</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs uppercase font-black text-gray-400">Parkinson:</label>
+                            <select onchange="updateDoc('m_parkinson', this.value)"
+                                value="{{ paciente.expediente_datos.m_parkinson if paciente.expediente_datos else '' }}"
+                                class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                                <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                                <option value="NO">NO</option>
+                                <option value="SI">SI</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs uppercase font-black text-gray-400">Cáncer:</label>
+                            <select onchange="updateDoc('m_cancer', this.value)"
+                                value="{{ paciente.expediente_datos.m_cancer if paciente.expediente_datos else '' }}"
+                                class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                                <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                                <option value="NO">NO</option>
+                                <option value="SI">SI</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="text-xs font-black text-blue-900 border-b">PADRE</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs uppercase font-black text-gray-400">Alzheimer:</label>
+                            <select onchange="updateDoc('p_alzheimer', this.value)"
+                                value="{{ paciente.expediente_datos.p_alzheimer if paciente.expediente_datos else '' }}"
+                                class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                                <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                                <option value="NO">NO</option>
+                                <option value="SI">SI</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs uppercase font-black text-gray-400">Diabetes:</label>
+                            <select onchange="updateDoc('p_diabetes', this.value)"
+                                value="{{ paciente.expediente_datos.p_diabetes if paciente.expediente_datos else '' }}"
+                                class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                                <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                                <option value="NO">NO</option>
+                                <option value="SI">SI</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs uppercase font-black text-gray-400">Hipertensión:</label>
+                            <select onchange="updateDoc('p_hipertension', this.value)"
+                                value="{{ paciente.expediente_datos.p_hipertension if paciente.expediente_datos else '' }}"
+                                class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                                <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                                <option value="NO">NO</option>
+                                <option value="SI">SI</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs uppercase font-black text-gray-400">Parkinson:</label>
+                            <select onchange="updateDoc('p_parkinson', this.value)"
+                                value="{{ paciente.expediente_datos.p_parkinson if paciente.expediente_datos else '' }}"
+                                class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                                <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                                <option value="NO">NO</option>
+                                <option value="SI">SI</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs uppercase font-black text-gray-400">Cáncer:</label>
+                            <select onchange="updateDoc('p_cancer', this.value)"
+                                value="{{ paciente.expediente_datos.p_cancer if paciente.expediente_datos else '' }}"
+                                class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                                <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                                <option value="NO">NO</option>
+                                <option value="SI">SI</option>
+                            </select>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 flex space-x-2">
+            <button onclick="changeStep(-1)"
+                class="flex-1 py-2 bg-gray-100 rounded-xl font-bold text-gray-500">Atrás</button>
+            <button onclick="changeStep(1)"
+                class="flex-1 py-2 bg-[#242552] text-white rounded-xl font-bold">Siguiente</button>
+        </div>
+        <div class="space-y-3 mt-6 no-print"> <!-- 'no-print' es clave para que no salgan en el papel -->
+
+            <!-- Botón 1: Solo Guardar (Azul Oscuro, color EUS) -->
+            <button type="button" onclick="soloGuardarYVolver()"
+                class="bg-[#242552] text-white w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-opacity-90 transition">
+                <i class="fas fa-save"></i>
+                GUARDAR Y VOLVER AL PERFIL
+            </button>
+
+            <!-- Botón 2: Solo Imprimir (Blanco con borde azul) -->
+            <button type="button" onclick="window.print()"
+                class="bg-white text-[#242552] w-full py-3 rounded-xl font-bold border-2 border-[#242552] flex items-center justify-center gap-2 hover:bg-blue-50 transition">
+                <i class="fas fa-print"></i>
+                IMPRIMIR HOJA CLÍNICA
+            </button>
+        </div>
+    </div>
+
+    <div class="hoja-pdf">
+        <div class="flex justify-between items-start mb-8">
+            <img src="/static/img/logoeuscolor.png" class="h-16">
+            <div class="text-right">
+                <h1 class="text-xl font-bold">EXPEDIENTE CLÍNICO ÚNICO DE SALUD</h1>
+                <p class="text-xs">MÉXICO</p>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <h2 class="text-sm font-bold border-b border-black mb-4">FICHA DE IDENTIFICACIÓN</h2>
+            <div class="text-[12px] space-y-2">
+                <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-5 flex items-end">
+                        <span class="whitespace-nowrap mr-1">NOMBRE:</span>
+                        <span class="linea-dato flex-grow min-w-0 truncate uppercase">{{ paciente.nombre }}</span>
+                    </div>
+
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">SEXO:</span>
+                        <span id="sexo_val" class="linea-dato flex-grow truncate">{{ paciente.expediente_datos.sexo if
+                            paciente.expediente_datos else '' }}</span>
+                    </div>
+
+                    <div class="col-span-4 flex items-end">
+                        <span class="whitespace-nowrap mr-1">FECHA DE NACIMIENTO:</span>
+                        <span id="fecha_nac_val" class="linea-dato flex-grow truncate uppercase">{{ paciente.fecha_nac
+                            }}</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-4 flex items-end">
+                        <span class="whitespace-nowrap mr-1">CURP:</span>
+                        <span id="paciente_curp_doc" class="linea-dato flex-grow min-w-0 truncate uppercase">
+                            {{ paciente.curp }}
+                        </span>
+                    </div>
+                    <div class="col-span-5 flex items-end">
+                        <span class="whitespace-nowrap mr-1">DOMICILIO:</span>
+                        <span id="domicilio_val" class="linea-dato flex-grow truncate uppercase">{{
+                            paciente.expediente_datos.domicilio if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">NSS:</span>
+                        <span id="nss" class="linea-dato flex-grow truncate uppercase">
+                            {{ paciente.nss }}
+                        </span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">TIPO DE SANGRE:</span>
+                        <span id="tipo_sangre_val" class="linea-dato flex-grow truncate uppercase">{{
+                            paciente.expediente_datos.tipo_sangre if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">RELIGIÓN:</span>
+                        <span id="religion_val" class="linea-dato flex-grow truncate uppercase">{{
+                            paciente.expediente_datos.religion if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">DISCAPACIDAD:</span>
+                        <span id="discapacidad_val" class="linea-dato flex-grow truncate uppercase">{{
+                            paciente.expediente_datos.discapacidad if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">¿CUÁL?:</span>
+                        <span id="tipo_disc_val" class="linea-dato flex-grow truncate uppercase">{{
+                            paciente.expediente_datos.tipo_disc if paciente.expediente_datos else '' }}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-4 flex items-end">
+                        <span class="whitespace-nowrap mr-1">OCUPACIÓN:</span>
+                        <span id="ocupacion_val" class="linea-dato flex-grow truncate uppercase "> {{
+                            paciente.expediente_datos.ocupacion if paciente.expediente_datos else '' }} </span>
+                    </div>
+                    <div class="col-span-4 flex items-end">
+                        <span class="whitespace-nowrap mr-1">ESTADO CIVIL:</span>
+                        <span id="est_civil_val" class="linea-dato flex-grow truncate uppercase">{{
+                            paciente.expediente_datos.est_civil if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-4 flex items-end">
+                        <span class="whitespace-nowrap mr-1">INFORMANTE:</span>
+                        <span id="informante_val" class="linea-dato flex-grow truncate uppercase">{{
+                            paciente.expediente_datos.informante if paciente.expediente_datos else '' }}</span>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="mt-6">
+                <h2 class="text-sm font-bold border-b border-black mb-4">SIGNOS VITALES</h2>
+                <div class="text-[11px] space-y-3">
+                    <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                        <div class="col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">TEMPERATURA:</span>
+                            <span id="temp_inf" class="linea-dato flex-grow truncate">{{
+                                paciente.expediente_datos.temp_inf if paciente.expediente_datos else '' }}</span>
+                        </div>
+
+                        <div class="col-span-4 flex items-end">
+                            <span class="whitespace-nowrap mr-1">FRECUENCIA CARDIACA:</span>
+                            <span id="frec_cardiaca_val" class="linea-dato flex-grow truncate uppercase">{{
+                                paciente.expediente_datos.frec_cardiaca if paciente.expediente_datos else '' }}</span>
+                        </div>
+                        <div class="col-span-4 flex items-end">
+                            <span class="whitespace-nowrap mr-1">PRESIÓN ARTERIAL:</span>
+                            <span id="pres_arterial_val" class="linea-dato flex-grow truncate uppercase">{{
+                                paciente.expediente_datos.pres_arterial if paciente.expediente_datos else '' }}</span>
+                        </div>
+                        <div class="col-span-4 flex items-end">
+                            <span class="whitespace-nowrap mr-1">FRECUENCIA RESPIRATORIA:</span>
+                            <span id="frec_respiratoria_val" class="linea-dato flex-grow truncate uppercase">{{
+                                paciente.expediente_datos.frec_respiratoria if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <h2 class="text-sm font-bold border-b border-black mb-4">ANTECEDENTES PERSONALES PATOLÓGICOS</h2>
+                <div class="text-[11px] space-y-3"></div>
+                <div class="grid grid-cols-12 gap-2 mt-2 text-[12px] items-end">
+                    <div class="col-span-8 flex items-end">
+                        <span class="whitespace-nowrap mr-1">ENFERMEDADES PROPIAS DE LA INFANCIA:</span>
+                        <span id="enf_inf" class="linea-dato flex-grow min-w-[50px] px-2 uppercase">{{
+                            paciente.expediente_datos.enf_inf if paciente.expediente_datos else '' }}</span>
+                    </div>
+
+                    <div class="col-span-2 flex items-end justify-end">
+                        <span class="whitespace-nowrap mr-1">ETS:</span>
+                        <span id="ets_inf" class="linea-dato w-12 truncate uppercase">{{
+                            paciente.expediente_datos.ets_inf if paciente.expediente_datos else '' }}</span>
+                    </div>
+
+                    <div class="col-span-2 flex items-end justify-end">
+                        <span class="whitespace-nowrap mr-1">VIH:</span>
+                        <span id="vih_val" class="linea-dato w-12 truncate uppercase">{{
+                            paciente.expediente_datos.vih_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-x-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">HEPATITIS:</span>
+                        <span id="hepatitis_val" class="linea-dato w-12 truncate uppercase">{{
+                            paciente.expediente_datos.hepatitis_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">AMEBIASIS:</span>
+                        <span id="amebiasis_val" class="linea-dato w-12 truncate uppercase">{{
+                            paciente.expediente_datos.amebiasis_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+
+                    <div class="col-span-6 flex items-end">
+                        <span class="whitespace-nowrap mr-1">OTRA PARASITOSIS:</span>
+                        <span id="otra_parasitosis_val" class="linea-dato flex-grow truncate uppercase">{{
+                            paciente.expediente_datos.otra_parasitosis_val if paciente.expediente_datos else ''
+                            }}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">AMIGDALITIS:</span>
+                        <span id="amigdalitis_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.amigdalitis_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-2 flex items-end">
+                        <span class="whitespace-nowrap mr-1">OTITIS:</span>
+                        <span id="otitis_val" class="linea-dato w-12 truncate">{{ paciente.expediente_datos.otitis_val
+                            if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">SINUSITIS:</span>
+                        <span id="sinusitis_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.sinusitis_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">FIEBRE REUMÁTICA:</span>
+                        <span id="fieb_reumatica_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.fieb_reumatica_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">NEUMONÍA:</span>
+                        <span id="neumonia_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.neumonia_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">PULMONÍA:</span>
+                        <span id="pulmonia_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.pulmonia_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-5 flex items-end">
+                        <span class="whitespace-nowrap mr-1">INFECCIONES RESPIRATORIAS FRECUENTES:</span>
+                        <span id="inf_resp_frec_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.inf_resp_frec_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-4 flex items-end">
+                        <span class="whitespace-nowrap mr-1">EPITAXIS FRECUENTES:</span>
+                        <span id="epitaxis_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.epitaxis_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">TUBERCULOSIS:</span>
+                        <span id="tuberculosis_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.tuberculosis_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-2 flex items-end">
+                        <span class="whitespace-nowrap mr-1">ANEMIA:</span>
+                        <span id="anemia_val" class="linea-dato w-12 truncate uppercase">{{
+                            paciente.expediente_datos.anemia_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-2 flex items-end">
+                        <span class="whitespace-nowrap mr-1">HEMOPTISIS:</span>
+                        <span id="hemoptisis_val" class="linea-dato w-12 truncate uppercase">{{
+                            paciente.expediente_datos.hemoptisis_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-x-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-4 flex items-end">
+                        <span class="whitespace-nowrap mr-1">ÚLCERA PÉPTICA:</span>
+                        <span id="ulcera_peptica_val" class="linea-dato w-12 truncate uppercase">{{
+                            paciente.expediente_datos.ulcera_peptica_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-4 flex items-end">
+                        <span class="whitespace-nowrap mr-1">DIABETES MELLITUS:</span>
+                        <span id="diabetes_mellitus_val" class="linea-dato w-12 truncate uppercase">{{
+                            paciente.expediente_datos.diabetes_mellitus_val if paciente.expediente_datos else ''
+                            }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">OTRA PARASITOSIS:</span>
+                        <span id="otra_parasitosis_val" class="linea-dato w-12 truncate uppercase">{{
+                            paciente.expediente_datos.otra_parasitosis_val if paciente.expediente_datos else ''
+                            }}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-4 flex items-end">
+                        <span class="whitespace-nowrap mr-1">ENFERMEDAD BILIAR:</span>
+                        <span id="biliar_val" class="linea-dato w-12 truncate uppercase">{{
+                            paciente.expediente_datos.biliar_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">ICTERICIA:</span>
+                        <span id="ictericia_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.ictericia_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">PANCREATITIS:</span>
+                        <span id="pancreatitis_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.pancreatitis_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-4 flex items-end">
+                        <span class="whitespace-nowrap mr-1">HEMORRAGIA DIGESTIVA:</span>
+                        <span id="hemorragia_digestiva_val" class="linea-dato w-12 truncate uppercase">{{
+                            paciente.expediente_datos.hemorragia_digestiva_val if paciente.expediente_datos else ''
+                            }}</span>
+                    </div>
+                    <div class="col-span-8 flex items-end">
+                        <span class="whitespace-nowrap mr-1">ENFERMEDAD CARDIOVASCULAR:</span>
+                        <span id="enf_cardvas_val" class="linea-dato flex-grow min-w-[50px] px-2 uppercase">{{
+                            paciente.expediente_datos.enf_cardvas_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-4 flex items-end">
+                        <span class="whitespace-nowrap mr-1">HIPERTENSIÓN ARTERIAL:</span>
+                        <span id="hiper_arterial_val" class="linea-dato w-12 truncate uppercase">{{
+                            paciente.expediente_datos.hiper_arterial_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-8 flex items-end">
+                        <span class="whitespace-nowrap mr-1">ENFERMEDADES HEMORRÁGICAS:</span>
+                        <span id="enf_hemorra_val" class="linea-dato flex-grow min-w-[50px] truncate uppercase">{{
+                            paciente.expediente_datos.enf_hemorra_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-7 flex items-end">
+                        <span class="whitespace-nowrap mr-1">CANCER Y OTROS TUMORES:</span>
+                        <span id="can_o_tum_val" class="linea-dato flex-grow min-w-[50px] px-2 uppercase">{{
+                            paciente.expediente_datos.can_o_tum_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6">
+                <h2 class="text-sm font-bold border-b border-black mb-4"></h2>
+                <div class="text-[11px] space-y-3">
+                    <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                        <div class="col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">TABAQUISMO:</span>
+                            <span id="tab_val" class="linea-dato w-12 truncate">{{ paciente.expediente_datos.tab_val if
+                                paciente.expediente_datos else '' }}</span>
+                        </div>
+                        <div class="col-span-4 flex items-end">
+                            <span class="whitespace-nowrap mr-1">CIGARRILLOS AL DIA:</span>
+                            <span id="cigarros_diarios_val" class="linea-dato flex-grow min-w-[50px] px-2 uppercase">{{
+                                paciente.expediente_datos.cigarros_diarios_val if paciente.expediente_datos else '' }}
+                            </span>
+                        </div>
+                        <div class="col-span-4 flex items-end">
+                            <span class="whitespace-nowrap mr-1">AÑOS FUMANDO:</span>
+                            <span id="años_fumando_val" class="linea-dato flex-grow min-w-[50px] px-2 uppercase">{{
+                                paciente.expediente_datos.años_fumando_val if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                        <div class="col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">ALCOHOLISMO:</span>
+                            <span id="alcoholismo_val" class="linea-dato w-12 truncate">{{
+                                paciente.expediente_datos.alcoholismo_val if paciente.expediente_datos else '' }}</span>
+                        </div>
+                        <div class="col-span-4 flex items-end">
+                            <span class="whitespace-nowrap mr-1">COPAS SEMANALES:</span>
+                            <span id="copas_semana_val" class="linea-dato flex-grow min-w-[50px] px-2 uppercase">{{
+                                paciente.expediente_datos.copas_semana_val if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                        <div class="col-span-4 flex items-end">
+                            <span class="whitespace-nowrap mr-1">AÑOS TOMANDO:</span>
+                            <span id="años_tomando_val" class="linea-dato flex-grow min-w-[50px] px-2 uppercase">{{
+                                paciente.expediente_datos.años_tomando_val if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                        <div class="col-span-5 flex items-end">
+                            <span class="whitespace-nowrap mr-1">USO ACTUAL DE DROGAS:</span>
+                            <span id="drogas_val" class="linea-dato w-12 truncate">{{
+                                paciente.expediente_datos.drogas_val if paciente.expediente_datos else '' }}</span>
+                        </div>
+                        <div class="col-span-4 flex items-end">
+                            <span class="whitespace-nowrap mr-1">¿CUÁLES?:</span>
+                            <span id="cuales_drogas_val" class="linea-dato flex-grow min-w-[50px] px-2 uppercase">{{
+                                paciente.expediente_datos.cuales_drogas_val if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                        <div class="col-span-5 flex items-end">
+                            <span class="whitespace-nowrap mr-1">TRANFUSIONES SANGUINEAS:</span>
+                            <span id="transfu_sang_val" class="linea-dato w-12 truncate">{{
+                                paciente.expediente_datos.transfu_sang_val if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                        <div class="col-span-4 flex items-end">
+                            <span class="whitespace-nowrap mr-1">NO. DE TRANSFUSIONES</span>:</span>
+                            <span id="num_transfusiones_val" class="linea-dato flex-grow min-w-[50px] px-2">{{
+                                paciente.expediente_datos.num_transfusiones_val if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                        <div class="col-span-4 flex items-end">
+                            <span class="whitespace-nowrap mr-1">TRAUMATISMOS:</span>
+                            <span id="traumatismos_val" class="linea-dato w-12 truncate uppercase">{{
+                                paciente.expediente_datos.traumatismos_val if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                        <div class="col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">CIRUGIAS:</span>
+                            <span id="cirugias_val" class="linea-dato w-12 truncate uppercase">{{
+                                paciente.expediente_datos.cirugias_val if paciente.expediente_datos else '' }}</span>
+                        </div>
+                        <div class="col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">HOSPITALIZACIONES PREVIAS:</span>
+                            <span id="hospitalizaciones_val" class="linea-dato w-12 truncate uppercase">{{
+                                paciente.expediente_datos.hospitalizaciones_val if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6">
+                <h2 class="text-sm font-bold border-b border-black mb-4">HIPERSENSIBILIDAD Y ALERGIAS</h2>
+                <div class="text-[11px] space-y-3">
+                    <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                        <div class="col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">MEDICAMENTOS:</span>
+                            <span id="medicamentos_val" class="linea-dato w-12 truncate">{{
+                                paciente.expediente_datos.medicamentos_val if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                        <div class="col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">¿CUÁLES?:</span>
+                            <span id="cuales_med_inf" class="linea-dato flex-grow min-w-[50px] px-2 uppercase">{{
+                                paciente.expediente_datos.cuales_med_inf if paciente.expediente_datos else '' }}</span>
+                        </div>
+                        <div class=" col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">ALIMENTOS:</span>
+                            <span id="alimentos_val" class="linea-dato w-10 truncate uppercase">{{
+                                paciente.expediente_datos.alimentos_val if paciente.expediente_datos else '' }}</span>
+                        </div>
+                        <div class="col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">¿CUÁLES?:</span>
+                            <span id="cuales_alimentos_inf" class="linea-dato flex-grow min-w-[50px] px-2 uppercase">{{
+                                paciente.expediente_datos.cuales_alimentos_inf if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                        <div class="col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">ANTIBIÓTICOS:</span>
+                            <span id="antibioticos_val" class="linea-dato w-12 truncate">{{
+                                paciente.expediente_datos.antibioticos_val if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                        <div class="col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">¿CUÁLES?:</span>
+                            <span id="cuales_antibioticos_inf"
+                                class="linea-dato flex-grow min-w-[50px] px-2 uppercase">{{
+                                paciente.expediente_datos.cuales_antibioticos_inf if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                        <div class=" col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">SULFAS:</span>
+                            <span id="sulfas_val" class="linea-dato w-10 truncate uppercase">{{
+                                paciente.expediente_datos.sulfas_val if paciente.expediente_datos else '' }}</span>
+                        </div>
+                        <div class="col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">¿CUÁLES?:</span>
+                            <span id="cuales_sulfas_inf" class="linea-dato flex-grow min-w-[50px] px-2 uppercase">{{
+                                paciente.expediente_datos.cuales_sulfas_inf if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                        <div class="col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">YODO:</span>
+                            <span id="yodo_val" class="linea-dato w-12 truncate">{{ paciente.expediente_datos.yodo_val
+                                if paciente.expediente_datos else '' }}</span>
+                        </div>
+                        <div class="col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">¿CUÁLES?:</span>
+                            <span id="cuales_yodo_inf" class="linea-dato flex-grow min-w-[50px] px-2 uppercase">{{
+                                paciente.expediente_datos.cuales_yodo_inf if paciente.expediente_datos else '' }}</span>
+                        </div>
+                        <div class=" col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">OTROS:</span>
+                            <span id="otros_val" class="linea-dato w-10 truncate uppercase">{{
+                                paciente.expediente_datos.otros_val if paciente.expediente_datos else '' }}</span>
+                        </div>
+                        <div class="col-span-3 flex items-end">
+                            <span class="whitespace-nowrap mr-1">¿CUÁLES?:</span>
+                            <span id="cuales_otros_inf" class="linea-dato flex-grow min-w-[50px] px-2 uppercase">{{
+                                paciente.expediente_datos.cuales_otros_inf if paciente.expediente_datos else ''
+                                }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    <div class="salto-pagina"></div>
+    <div class="hoja-pdf">
+        <div class="flex justify-between items-start mb-8">
+            <img src="/static/img/logoeuscolor.png" class="h-16">
+            <div class="text-right">
+                <h1 class="font-bold text-lg text-[#242552]">EXPEDIENTE CLÍNICO ÚNICO DE SALUD</h1>
+                <p class="text-xs">CONTINUACIÓN - HOJA 2</p>
+            </div>
+        </div>
+        <div class="mb-6">
+            <h2 class="text-sm font-bold border-b border-black mb-2">ANTECEDENTES PERSONALES NO PATOLOGICOS</h2>
+            <div class="text-[12px] space-y-2">
+                <h2 class="text-sm font-bold mb-2">VACUNAS</h2>
+                <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">HEPATITIS:</span>
+                        <span id="hepatitis_vac_val" class="linea-dato w-12 truncate uppercase">{{
+                            paciente.expediente_datos.hepatitis_vac_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">POLIOMELITIS:</span>
+                        <span id="poliomelitis_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.poliomelitis_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">ROTAVIRUS:</span>
+                        <span id="rotavirus_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.rotavirus_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">BCG:</span>
+                        <span id="bcg_val" class="linea-dato w-12 truncate">{{ paciente.expediente_datos.bcg_val if
+                            paciente.expediente_datos else '' }}</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-4 flex items-end">
+                        <span class="whitespace-nowrap mr-1">TRIPLE VIRAL SRP y SR:</span>
+                        <span id="triple_viral_val" class="linea-dato w-12 truncate uppercase">{{
+                            paciente.expediente_datos.triple_viral_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">NEUMOCOCO:</span>
+                        <span id="neumococo_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.neumococo_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">PENTAVALENTE:</span>
+                        <span id="pentavalente_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.pentavalente_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-2 flex items-end">
+                        <span class="whitespace-nowrap mr-1">TD:</span>
+                        <span id="td_val" class="linea-dato w-12 truncate">{{ paciente.expediente_datos.td_val if
+                            paciente.expediente_datos else '' }}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                    <div class="col-span-2 flex items-end">
+                        <span class="whitespace-nowrap mr-1">DPT:</span>
+                        <span id="dpt_val" class="linea-dato w-12 truncate">{{ paciente.expediente_datos.dpt_val if
+                            paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-3 flex items-end">
+                        <span class="whitespace-nowrap mr-1">INFLUENZA:</span>
+                        <span id="influenza_val" class="linea-dato w-12 truncate">{{
+                            paciente.expediente_datos.influenza_val if paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-2 flex items-end">
+                        <span class="whitespace-nowrap mr-1">VPH:</span>
+                        <span id="vph_val" class="linea-dato w-12 truncate">{{ paciente.expediente_datos.vph_val if
+                            paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-2 flex items-end">
+                        <span class="whitespace-nowrap mr-1">TDPA:</span>
+                        <span id="tdpa_val" class="linea-dato w-12 truncate">{{ paciente.expediente_datos.tdpa_val if
+                            paciente.expediente_datos else '' }}</span>
+                    </div>
+                    <div class="col-span-2 flex items-end">
+                        <span class="whitespace-nowrap mr-1">COVID-19:</span>
+                        <span id="covid_val" class="linea-dato w-12 truncate">{{ paciente.expediente_datos.covid_val if
+                            paciente.expediente_datos else '' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mb-6">
+            <h2 class="text-sm font-bold border-b border-black mb-6">ANTECEDENTES PERSONALES NO PATOLOGICOS</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse border border-gray-400 text-[12px]">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="border border-gray-400 p-2 text-left font-bold">Enfermedad /
+                                Pariente</th>
+                            <th class="border border-gray-400 p-2 text-center font-bold">Alzheimer</th>
+                            <th class="border border-gray-400 p-2 text-center font-bold">Diabetes</th>
+                            <th class="border border-gray-400 p-2 text-center font-bold">Hipertensión
+                            </th>
+                            <th class="border border-gray-400 p-2 text-center font-bold">Parkinson</th>
+                            <th class="border border-gray-400 p-2 text-center font-bold">Cáncer</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="border border-gray-400 p-2 font-bold bg-gray-50">Madre</td>
+                            <td class="border border-gray-400 p-2 text-center"><span id="m_alzheimer"
+                                    class="font-bold">{{ paciente.expediente_datos.m_alzheimer if
+                                    paciente.expediente_datos else '' }}</span></td>
+                            <td class="border border-gray-400 p-2 text-center"><span id="m_diabetes"
+                                    class="font-bold">{{ paciente.expediente_datos.m_diabetes if
+                                    paciente.expediente_datos else '' }}</span></td>
+                            <td class="border border-gray-400 p-2 text-center"><span id="m_hipertension"
+                                    class="font-bold">{{ paciente.expediente_datos.m_hipertension if
+                                    paciente.expediente_datos else '' }}</span></td>
+                            <td class="border border-gray-400 p-2 text-center"><span id="m_parkinson"
+                                    class="font-bold">{{ paciente.expediente_datos.m_parkinson if
+                                    paciente.expediente_datos else '' }}</span></td>
+                            <td class="border border-gray-400 p-2 text-center"><span id="m_cancer" class="font-bold">{{
+                                    paciente.expediente_datos.m_cancer if paciente.expediente_datos else '' }}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-400 p-2 font-bold bg-gray-50">Padre</td>
+                            <td class="border border-gray-400 p-2 text-center"><span id="p_alzheimer"
+                                    class="font-bold">{{ paciente.expediente_datos.p_alzheimer if
+                                    paciente.expediente_datos else '' }}</span></td>
+                            <td class="border border-gray-400 p-2 text-center"><span id="p_diabetes"
+                                    class="font-bold">{{ paciente.expediente_datos.p_diabetes if
+                                    paciente.expediente_datos else '' }}</span></td>
+                            <td class="border border-gray-400 p-2 text-center"><span id="p_hipertension"
+                                    class="font-bold">{{ paciente.expediente_datos.p_hipertension if
+                                    paciente.expediente_datos else '' }}</span></td>
+                            <td class="border border-gray-400 p-2 text-center"><span id="p_parkinson"
+                                    class="font-bold">{{ paciente.expediente_datos.p_parkinson if
+                                    paciente.expediente_datos else '' }}</span></td>
+                            <td class="border border-gray-400 p-2 text-center"><span id="p_cancer" class="font-bold">{{
+                                    paciente.expediente_datos.p_cancer if paciente.expediente_datos else '' }}</span>
+                            </td>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+        <script>
+            let currentStep = 1;
+            const totalSteps = 3;
+
+            function updateDoc(id, val) {
+                const element = document.getElementById(id);
+                if (element) element.innerText = val || "";
+            }
+
+            function changeStep(dir) {
+                // Oculta el paso actual
+                document.getElementById(`q-step-${currentStep}`).classList.remove('active');
+
+                currentStep += dir;
+
+                // Validaciones para no salirse del rango de pasos
+                if (currentStep < 1) currentStep = 1;
+                if (currentStep > totalSteps) currentStep = totalSteps;
+
+                // Muestra el nuevo paso
+                document.getElementById(`q-step-${currentStep}`).classList.add('active');
+            }
+
+            function soloGuardarYVolver() {
+                console.log("Iniciando proceso de guardado...");
+
+                // 1. Validación obligatoria de la CURP
+                const curpElement = document.getElementById('paciente_curp_doc');
+
+                if (!curpElement) {
+                    alert("Error crítico: No se encontró el elemento con ID 'paciente_curp_doc'. Verifique su HTML.");
+                    return;
+                }
+
+                const curpPaciente = curpElement.innerText.trim();
+
+                const datosExpediente = {
+                    curp: curpPaciente,
+                    valores: {
+                        sexo: document.getElementById('sexo_val').innerText,
+                        nacimiento: document.getElementById('fecha_nac_val').innerText,
+                        curp: document.getElementById('paciente_curp_doc').innerText, // El ID donde se muestra la CURP
+                        domicilio: document.getElementById('domicilio_val').innerText,
+                        religion: document.getElementById('religion_val').innerText,
+                        tipoSangre: document.getElementById('tipo_sangre_val').innerText,
+                        discapacidad: document.getElementById('discapacidad_val').innerText,
+                        tipo_discapacidad: document.getElementById('tipo_disc_val').innerText,
+                        ocupacion: document.getElementById('ocupacion_val').innerText,
+                        informante: document.getElementById('informante_val').innerText,
+                        estado_civil: document.getElementById('est_civil_val').innerText,
+
+                        temperatura: document.getElementById('temp_inf').innerText,
+                        frecuencia_cardiaca: document.getElementById('frec_cardiaca_val').innerText,
+                        presion_arterial: document.getElementById('pres_arterial_val').innerText,
+                        frecuencia_respiratoria: document.getElementById('frec_respiratoria_val').innerText,
+
+                        enfermedades_infancia: document.getElementById('enf_inf').innerText,
+                        ets: document.getElementById('ets_inf').innerText,
+                        vih: document.getElementById('vih_val').innerText,
+                        hepatitis: document.getElementById('hepatitis_val').innerText,
+                        amebiasis: document.getElementById('amebiasis_val').innerText,
+                        otra_parasitosis: document.getElementById('otra_parasitosis_val').innerText,
+                        amigdalitis: document.getElementById('amigdalitis_val').innerText,
+                        otitis: document.getElementById('otitis_val').innerText,
+                        sinusitis: document.getElementById('sinusitis_val').innerText,
+                        fiebre_reumatica: document.getElementById('fieb_reumatica_val').innerText,
+                        neumonia: document.getElementById('neumonia_val').innerText,
+                        pulmonia: document.getElementById('pulmonia_val').innerText,
+                        inf_resp_frec: document.getElementById('inf_resp_frec_val').innerText,
+                        epitaxis: document.getElementById('epitaxis_val').innerText,
+                        tuberculosis: document.getElementById('tuberculosis_val').innerText,
+                        anemia: document.getElementById('anemia_val').innerText,
+                        hemoptisis: document.getElementById('hemoptisis_val').innerText,
+                        ulcera_peptica: document.getElementById('ulcera_peptica_val').innerText,
+                        diabetes_mellitus: document.getElementById('diabetes_mellitus_val').innerText,
+                        biliar: document.getElementById('biliar_val').innerText,
+                        ictericia: document.getElementById('ictericia_val').innerText,
+                        pancreatitis: document.getElementById('pancreatitis_val').innerText,
+                        hemorragia_digestiva: document.getElementById('hemorragia_digestiva_val').innerText,
+                        enf_cardvas: document.getElementById('enf_cardvas_val').innerText,
+                        hiper_arterial: document.getElementById('hiper_arterial_val').innerText,
+                        enf_hemorra: document.getElementById('enf_hemorra_val').innerText,
+                        can_o_tum: document.getElementById('can_o_tum_val').innerText,
+                        tabaquismo: document.getElementById('tab_val').innerText,
+                        cigarros_diarios: document.getElementById('cigarros_diarios_val').innerText,
+                        años_fumando: document.getElementById('años_fumando_val').innerText,
+                        alcoholismo: document.getElementById('alcoholismo_val').innerText,
+                        copas_semana: document.getElementById('copas_semana_val').innerText,
+                        años_tomando: document.getElementById('años_tomando_val').innerText,
+                        drogas: document.getElementById('drogas_val').innerText,
+                        cuales_drogas: document.getElementById('cuales_drogas_val').innerText,
+                        transfu_sang: document.getElementById('transfu_sang_val').innerText,
+                        num_transfusiones: document.getElementById('num_transfusiones_val').innerText,
+                        traumatismos: document.getElementById('traumatismos_val').innerText,
+                        cirugias: document.getElementById('cirugias_val').innerText,
+                        hospitalizaciones: document.getElementById('hospitalizaciones_val').innerText,
+
+                        medicamentos: document.getElementById('medicamentos_val').innerText,
+                        cuales_med_inf: document.getElementById('cuales_med_inf').innerText,
+                        alimentos: document.getElementById('alimentos_val').innerText,
+                        cuales_alimentos_inf: document.getElementById('cuales_alimentos_inf').innerText,
+                        antibioticos: document.getElementById('antibioticos_val').innerText,
+                        cuales_antibioticos_inf: document.getElementById('cuales_antibioticos_inf').innerText,
+                        sulfas: document.getElementById('sulfas_val').innerText,
+                        cuales_sulfas_inf: document.getElementById('cuales_sulfas_inf').innerText,
+                        yodo: document.getElementById('yodo_val').innerText,
+                        cuales_yodo_inf: document.getElementById('cuales_yodo_inf').innerText,
+                        otros: document.getElementById('otros_val').innerText,
+                        cuales_otros_inf: document.getElementById('cuales_otros_inf').innerText,
+
+                        hepatitis: document.getElementById('hepatitis_vac_val').innerText,
+                        poliomelitis: document.getElementById('poliomelitis_val').innerText,
+                        rotavirus: document.getElementById('rotavirus_val').innerText,
+                        triple_viral: document.getElementById('triple_viral_val').innerText,
+                        pentavalente: document.getElementById('pentavalente_val').innerText,
+                        dpt: document.getElementById('dpt_val').innerText,
+                        influenza: document.getElementById('influenza_val').innerText,
+                        td: document.getElementById('td_val').innerText,
+                        vph: document.getElementById('vph_val').innerText,
+                        tdpa: document.getElementById('tdpa_val').innerText,
+                        covid: document.getElementById('covid_val').innerText,
+
+                        mad_alzheimer: document.getElementById('m_alzheimer').innerText,
+                        mad_diabetes: document.getElementById('m_diabetes').innerText,
+                        mad_hipertension: document.getElementById('m_hipertension').innerText,
+                        mad_parkinson: document.getElementById('m_parkinson').innerText,
+                        mad_cancer: document.getElementById('m_cancer').innerText,
+                        pad_alzheimer: document.getElementById('p_alzheimer').innerText,
+                        pad_diabetes: document.getElementById('p_diabetes').innerText,
+                        pad_hipertension: document.getElementById('p_hipertension').innerText,
+                        pad_parkinson: document.getElementById('p_parkinson').innerText,
+                        pad_cancer: document.getElementById('p_cancer').innerText
+                    }
+                };
+
+                // Enviamos los datos a Flask
+                // 3. Envío de datos al servidor
+                fetch('/guardar_expediente', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datosExpediente)
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === "success") {
+                            alert("Expediente guardado correctamente.");
+                            window.location.href = `/perfil_paciente/${curpPaciente}`;
+                        } else {
+                            alert("Error al guardar: " + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error en la comunicación:', error);
+                        alert("Hubo un fallo al contactar con el servidor.");
+                    });
+            }
+
+            // ==========================================
+            // 4. ACTUALIZACIÓN EN TIEMPO REAL
+            // ==========================================
+            function updateDoc(id, value) {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.innerText = value || "____________________";
+                }
+            }
+        </script>
+</body>
+
+</html>

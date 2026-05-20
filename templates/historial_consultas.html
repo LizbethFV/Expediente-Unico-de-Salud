@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Historial: {{ paciente.nombre }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body class="bg-gray-50/50">
+    <nav class="bg-[#f0f7ff] p-4 flex justify-between items-center shadow-md mb-8 px-12 relative">
+        <div class="flex items-center">
+            <a href="/dashboard">
+                <img src="/static/img/logoeuscolor.png" class="w-17 h-14" alt="Logo EUS">
+            </a>
+        </div>
+
+        <div class="flex space-x-8 text-blue-950 font-bold text-[20px] items-center ml-auto mr-12">
+            <a href="/agenda" class="hover:text-blue-500 transition">Agenda</a>
+            <a href="/pacientes" class="border-b-4 border-blue-600 text-blue-600 pb-1">Pacientes</a>
+            <a href="/consultas" class="hover:text-blue-500 transition">Consultas</a>
+        </div>
+
+        <div class="relative px-2">
+            <button onclick="toggleDropdown()"
+                class="flex items-center p-2 rounded-2xl hover:bg-gray-50 transition-all focus:outline-none">
+                <div class="w-12 h-12 rounded-full border-2 border-blue-400 overflow-hidden shadow-sm bg-slate-200">
+                    {% if doctor and doctor.foto_url %}
+                    <img src="{{ doctor.foto_url }}" class="w-full h-full object-cover">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center bg-slate-600">
+                        <i class="fas fa-user-md text-white text-xl"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="ml-3 text-left hidden md:block">
+                    <p class="text-sm font-black text-[#242552] truncate w-32">
+                        {{ doctor.username if doctor else 'Médico EUS' }}
+                    </p>
+                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-tighter">
+                        Mi Cuenta <i class="fas fa-chevron-down ml-1"></i>
+                    </p>
+                </div>
+            </button>
+
+            <div id="profileDropdown"
+                class="hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                <a href="/perfil-medico"
+                    class="flex items-center px-5 py-4 text-sm text-[#242552] hover:bg-blue-50 transition-colors border-b border-gray-100 font-bold">
+                    <i class="fas fa-user-circle mr-3 text-blue-600 text-lg"></i> Ver Perfil
+                </a>
+                <a href="/logout"
+                    class="flex items-center px-5 py-4 text-sm text-red-600 hover:bg-red-50 transition-colors font-black">
+                    <i class="fas fa-sign-out-alt mr-3 text-lg"></i> Cerrar Sesión
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-5xl mx-auto px-4">
+        <a href="{{ url_for('perfil_paciente', curp=paciente.curp) }}"
+            class="text-blue-950 font-bold hover:underline text-sm flex items-center mb-6 w-max">
+            <i class="fas fa-arrow-left mr-2"></i> Volver al Perfil
+        </a>
+
+        <div class="mb-6 px-2">
+            <h1 class="text-2xl font-black text-[#242552] uppercase tracking-wider">Historial de Consultas</h1>
+            <p class="text-sm font-bold text-blue-500 mt-1 uppercase">
+                <i class="fas fa-user mr-1.5"></i> Paciente: <span class="text-gray-700 font-black">{{ paciente.nombre
+                    }}</span>
+            </p>
+        </div>
+
+        <div class="bg-white rounded-md shadow-xl overflow-hidden border border-gray-100">
+            <table class="w-full text-left" id="tablaConsultas">
+                <thead>
+                    <tr class="bg-[#242552] text-white">
+                        <th class="px-6 py-4 font-bold uppercase text-sm">Fecha y Hora</th>
+                        <th class="px-6 py-4 font-bold uppercase text-sm">Motivo / Especialidad</th>
+                        <th class="px-6 py-4 font-bold uppercase text-sm">Diagnóstico</th>
+                        <th class="px-6 py-4 font-bold uppercase text-sm text-right">Acción</th>
+                    </tr>
+                </thead>
+
+                <tbody class="divide-y divide-gray-100">
+                    {% if consultas %}
+                    {% for c in consultas %}
+                    <tr class="hover:bg-blue-50 transition">
+                        <td class="py-4 px-6">
+                            <p class="font-bold text-[#242552] text-sm">{{ c.fecha }}</p>
+                            <p class="text-xs text-gray-400 font-medium mt-0.5">{{ c.hora }}</p>
+                        </td>
+
+                        <td class="py-4 px-6 text-gray-700 font-bold text-sm uppercase">
+                            {{ c.motivo }}
+                        </td>
+
+                        <td class="py-4 px-6 text-gray-500 text-sm font-medium truncate max-w-xs">
+                            {{ c.diagnostico }}
+                        </td>
+
+                        <td class="py-4 px-6 text-right">
+                            <a href="{{ url_for('detalle_consulta', id=c._id) }}"
+                                class="text-blue-600 font-bold hover:underline text-sm">
+                                Ver Detalle
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-12 text-center text-gray-400 font-bold text-sm">
+                            <i class="fas fa-folder-open text-4xl mb-3 block text-gray-200"></i>
+                            No hay consultas registradas para este paciente.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function toggleDropdown() {
+            document.getElementById('profileDropdown').classList.toggle('hidden');
+        }
+    </script>
+</body>
+
+</html>

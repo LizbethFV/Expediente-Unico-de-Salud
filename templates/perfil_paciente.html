@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Perfil: {{ paciente.nombre }} - EUS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body class="bg-white min-h-screen">
+
+    <nav class="bg-[#f0f7ff] p-3 flex justify-between items-center shadow-md mb-8 px-12 relative">
+        <div class="flex items-center">
+            <a href="/dashboard">
+                <img src="/static/img/logoeuscolor.png" class="w-17 h-14" alt="Logo EUS">
+            </a>
+        </div>
+
+        <div class="flex space-x-8 text-blue-950 font-bold text-[20px] items-center ml-auto mr-12">
+            <a href="/agenda" class="hover:text-blue-500 transition">Agenda</a>
+            <a href="/pacientes" class="border-b-4 border-blue-600 text-blue-600 pb-1">Pacientes</a>
+            <a href="/consultas" class="hover:text-blue-500 transition">Consultas</a>
+        </div>
+
+        <div class="relative px-2">
+            <button onclick="toggleDropdown()"
+                class="flex items-center p-2 rounded-2xl hover:bg-gray-50 transition-all focus:outline-none">
+                <div class="w-12 h-12 rounded-full border-2 border-blue-400 overflow-hidden shadow-sm bg-slate-200">
+                    {% if doctor and doctor.foto_url %}
+                    <img src="{{ doctor.foto_url }}" class="w-full h-full object-cover">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center bg-slate-600">
+                        <i class="fas fa-user-md text-white text-xl"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="ml-3 text-left hidden md:block">
+                    <p class="text-sm font-black text-[#242552] truncate w-32">
+                        {{ doctor.username if doctor else 'Médico EUS' }}
+                    </p>
+                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-tighter">
+                        Mi Cuenta <i class="fas fa-chevron-down ml-1"></i>
+                    </p>
+                </div>
+            </button>
+
+            <div id="profileDropdown"
+                class="hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                <a href="/perfil-medico"
+                    class="flex items-center px-5 py-4 text-sm text-[#242552] hover:bg-blue-50 transition-colors border-b border-gray-100 font-bold">
+                    <i class="fas fa-user-circle mr-3 text-blue-600 text-lg"></i> Ver Perfil
+                </a>
+                <a href="/logout"
+                    class="flex items-center px-5 py-4 text-sm text-red-600 hover:bg-red-50 transition-colors font-black">
+                    <i class="fas fa-sign-out-alt mr-3 text-lg"></i> Cerrar Sesión
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-4">
+        <div
+            class="bg-white rounded-md p-8 shadow-md border-t-8 border-[#242552] flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-black text-[#242552] uppercase">{{ paciente.nombre }}</h1>
+                <p class="text-gray-500 font-bold">CURP: <span class="text-blue-600">{{ paciente.curp }}</span> | Edad:
+                    {{ paciente.edad }} años</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-2 gap-8 items-start">
+
+            <div class="bg-white rounded-md p-6 shadow-lg border hover:shadow-xl transition">
+                <div class="h-24 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 text-blue-200 text-4xl">
+                    <i class="fas fa-file-medical"></i>
+                </div>
+                <h3 class="text-xl font-bold text-[#242552]">Expediente Clínico</h3>
+                <p class="text-gray-400 text-xs mt-2 mb-6">Historial médico, antecedentes y exploración.</p>
+                <a href="{{ url_for('abrir_expediente', curp=paciente.curp) }}"
+                    class="block w-full text-center bg-[#242552] text-white py-3 rounded-xl font-bold hover:bg-opacity-90 transition">
+                    Gestionar
+                </a>
+            </div>
+            <div class="bg-white rounded-md p-6 shadow-lg border hover:shadow-xl transition">
+                <div
+                    class="h-24 bg-purple-50 rounded-2xl flex items-center justify-center mb-4 text-purple-200 text-4xl">
+                    <i class="fas fa-tooth"></i>
+                </div>
+                <h3 class="text-xl font-bold text-[#242552]">Especialidades</h3>
+                <p class="text-gray-400 text-xs mt-2 mb-6">Odontología, Ginecología y Nutrición.</p>
+                <a href="/paciente/{{ paciente.curp }}/anexos"
+                    class="block w-full text-center bg-[#242552] text-white py-3 rounded-xl font-bold hover:bg-opacity-90 transition">
+                    <i class="fas fa-folder-open mr-2"></i> Ver Anexos
+                </a>
+            </div>
+            <div class="bg-white rounded-md p-6 shadow-lg border hover:shadow-xl transition">
+                <div
+                    class="h-24 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 text-blue-400 text-4xl w-full">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <h3 class="text-xl font-bold text-[#242552]">Expediente Digital</h3>
+                <p class="text-gray-400 text-xs mt-2 mb-6 flex-grow">
+                    Consulta, visualiza y agrega estudios clínicos, radiografías o archivos PDF adjuntos a este
+                    paciente.
+                </p>
+                <form action="{{ url_for('subir_archivo_paciente', curp=paciente.curp) }}" method="POST"
+                    enctype="multipart/form-data" class="w-full space-y-3 mb-6 border-b pb-6 border-gray-100">
+                    <input type="file" name="estudio_medico" required
+                        class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+
+                    <button type="submit"
+                        class="block w-full text-center bg-[#242552] text-white py-3 rounded-xl font-bold hover:bg-opacity-90 transition">
+                        <i class="fas fa-cloud-upload-alt mr-2"></i>Subir Documento
+                    </button>
+                    <a href="{{ url_for('expediente_paciente', curp=paciente.curp) }}"
+                        class="block w-full text-center bg-[#242552] text-white py-3 rounded-xl font-bold hover:bg-opacity-90 transition">
+                        <i class="fas fa-eye"></i> Ver Archivos
+                    </a>
+                </form>
+            </div>
+            <div
+                class="bg-white rounded-md p-6 shadow-lg border hover:shadow-xl transition flex flex-col border-blue-100">
+                <div
+                    class="h-24 bg-orange-50 rounded-2xl flex items-center justify-center mb-4 text-orange-200 text-4xl">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+
+                <h3 class="text-xl font-bold text-[#242552]">Consultas</h3>
+                <p class="text-gray-400 text-xs mt-2 mb-6 flex-grow">
+                    Registro de visitas previas, diagnósticos y recetas generadas para este paciente.
+                </p>
+
+                <a href="{{ url_for('ver_consultas', curp=paciente.curp) }}"
+                    class="block w-full text-center border-2 border-orange-400 text-orange-600 py-3 rounded-xl font-bold hover:bg-orange-50 transition">
+                    Ver Historial ({{ consultas|length if consultas else 0 }})
+                </a>
+            </div>
+
+        </div>
+    </main>
+    <script>
+        function toggleDropdown() {
+            const dropdown = document.getElementById('profileDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+
+        // Cerrar el menú si hacen clic fuera de él
+        window.onclick = function (event) {
+            if (!event.target.closest('button')) {
+                const dropdown = document.getElementById('profileDropdown');
+                if (dropdown && !dropdown.classList.contains('hidden')) {
+                    dropdown.classList.add('hidden');
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

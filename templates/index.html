@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EUS - Panel de Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #ffffff;
+            /* Fondo muy claro de tu diseño */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Color azul claro del nav y los encabezados de cards */
+        .bg-eus-light {
+            background-color: #f0f7ff;
+        }
+
+        /* Color azul oscuro de los botones y el logo */
+        .bg-eus-dark {
+            background-color: #242552;
+        }
+
+        .text-eus-dark {
+            color: #242552;
+        }
+
+        .card-shadow {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-radius: sm;
+            /* Bordes muy redondeados de tu diseño */
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="bg-eus-light p-4 flex justify-between items-center shadow-md">
+        <div class="flex items-center">
+            <img src="{{ url_for('static', filename='img/logoeuscolor.png') }}" class="w-17 h-14" alt="Logo EUS">
+        </div>
+
+        <div class="relative w-full max-w-[550px]">
+            <input type="text" id="inputGoogle" oninput="buscarSugerencias()" autocomplete="off"
+                placeholder="Buscar paciente por nombre o CURP..."
+                class="rounded-xl py-3 px-12 w-full outline-none focus:ring-2 ring-blue-300 text-base shadow-md">
+            <i class="fas fa-search absolute left-4 top-4 text-gray-400"></i>
+
+            <div id="listaSugerencias"
+                class="absolute top-full left-0 right-0 bg-white mt-2 rounded-2xl shadow-2xl border border-gray-100 hidden z-[200] overflow-hidden">
+            </div>
+        </div>
+
+        <div class="flex space-x-8 text-blue-950 font-bold text-[22px] items-center">
+            <a href="/agenda" class="hover:text-blue-100 transition">Agenda</a>
+            <a href="/pacientes" class="hover:text-blue-100 transition">Pacientes</a>
+            <a href="/consultas" class="hover:text-blue-100 transition">Consultas</a>
+        </div>
+
+        <div class="relative px-2">
+            <button onclick="toggleDropdown()"
+                class="flex items-center p-2 rounded-2xl hover:bg-gray-50 transition-all focus:outline-none">
+                <div class="w-12 h-12 rounded-full border-2 border-blue-400 overflow-hidden shadow-sm bg-slate-200">
+                    {% if doctor and doctor.foto_url %}
+                    <img src="{{ doctor.foto_url }}" class="w-full h-full object-cover">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center bg-slate-600">
+                        <i class="fas fa-user-md text-white text-xl"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="ml-3 text-left hidden md:block">
+                    <p class="text-sm font-black text-[#242552] truncate w-32">
+                        {{ doctor.username if doctor else 'Médico EUS' }}
+                    </p>
+                    <p class="text-[10px] text-blue-500 font-bold uppercase tracking-tighter">
+                        Mi Cuenta <i class="fas fa-chevron-down ml-1"></i>
+                    </p>
+                </div>
+            </button>
+
+            <div id="profileDropdown"
+                class="hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                <a href="/perfil-medico"
+                    class="flex items-center px-5 py-4 text-sm text-[#242552] hover:bg-blue-50 transition-colors border-b border-gray-100 font-bold">
+                    <i class="fas fa-user-circle mr-3 text-blue-600 text-lg"></i> Ver Perfil
+                </a>
+                <a href="/logout"
+                    class="flex items-center px-5 py-4 text-sm text-red-600 hover:bg-red-50 transition-colors font-black">
+                    <i class="fas fa-sign-out-alt mr-3 text-lg"></i> Cerrar Sesión
+                </a>
+            </div>
+        </div>
+    </nav>
+
+
+    <main class="p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+        <section class="md:col-span-3 bg-white card-shadow overflow-hidden rounded-sm border border-gray-100">
+            <div class="bg-eus-light p-4">
+                <h2 class="text-eus-dark font-black text-xl text-center">Próximas Citas</h2>
+            </div>
+            <div class="p-5 space-y-4 overflow-y-auto max-h-[500px]">
+                {% if citas %}
+                {% for cita in citas %}
+                <div
+                    class="border-l-4 border-blue-500 p-4 bg-blue-50/50 rounded-r-xl shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start mb-1">
+                        <p class="font-black text-[#242552] text-sm uppercase tracking-tighter">
+                            {{ cita.nombre_final }}
+                        </p>
+                        <span class="text-[10px] font-bold bg-white px-2 py-0.5 rounded-full text-blue-600 shadow-sm">
+                            {{ cita.motivo }}
+                        </span>
+                    </div>
+                    <div class="flex items-center text-gray-500 space-x-3">
+                        <div class="flex items-center">
+                            <i class="far fa-calendar-alt mr-1.5 text-blue-400 text-xs"></i>
+                            <p class="text-[11px] font-bold">{{ cita.fecha }}</p>
+                        </div>
+                        <div class="flex items-center border-l border-gray-300 pl-3">
+                            <i class="far fa-clock mr-1.5 text-blue-400 text-xs"></i>
+                            <p class="text-[11px] font-bold">{{ cita.hora }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-center py-10">
+                    <i class="fas fa-calendar-day text-gray-200 text-4xl mb-3"></i>
+                    <p class="text-gray-400 text-xs font-bold">No hay citas agendadas</p>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="md:col-span-6 space-y-6">
+            <div class="bg-white p-6 card-shadow text-center">
+                <div class="grid grid-cols-3 gap-4">
+                    <button onclick="openModal()"
+                        class="bg-eus-dark hover:bg-blue-600 text-white p-4 rounded-md transition flex flex-col items-center">
+                        <i class="fas fa-user-plus text-xl mb-1"></i>
+                        <span class="text-xs font-semibold">Nuevo Paciente</span>
+                    </button>
+                    <button onclick="openModalConsulta()"
+                        class="bg-eus-dark hover:bg-blue-600 text-white p-4 rounded-md transition flex flex-col items-center">
+                        <i class="fas fa-notes-medical text-xl mb-1"></i>
+                        <span class="text-xs font-semibold">Nueva Consulta</span>
+                    </button>
+                    <button onclick="document.getElementById('modalAgenda').classList.remove('hidden')"
+                        class="bg-eus-dark hover:bg-blue-600 text-white p-4 rounded-md transition flex flex-col items-center">
+                        <i class="fas fa-calendar-alt text-xl mb-1"></i>
+                        <span class="text-xs font-semibold">Agendar Cita</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white card-shadow overflow-hidden rounded-sm">
+                <div class="bg-eus-light p-4">
+                    <h2 class="text-eus-dark font-black text-xl text-center">Pacientes Recientes
+                    </h2>
+                </div>
+                <div class="p-5 overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="text-blue-950 border-b">
+                                <th class="pb-2">Paciente</th>
+                                <th class="pb-2">CURP</th>
+                                <th class="pb-2">Última Visita</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for p in pacientes %}
+                            <tr class="hover:bg-blue-50/50 transition-colors group">
+                                <td class="px-6 py-4">
+                                    <a href="{{ url_for('perfil_paciente', curp=p.curp) }}"
+                                        class="text-[#242552] font-bold hover:text-blue-600 hover:underline flex items-center">
+                                        <div
+                                            class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-3 text-xs group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                            {{ p.nombre[:1] }}
+                                        </div>
+                                        {{ p.nombre }}
+                                    </a>
+                                </td>
+
+                                <td class="px-6 py-4 font-mono text-sm text-gray-500">{{ p.curp }}</td>
+                                <td class="px-6 py-4 text-gray-500 text-sm italic">{{ p.ultima_visita }}</td>
+
+                                <td class="px-6 py-4 text-right">
+                                    <span
+                                        class="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-green-100 text-green-700">
+                                        {{ p.estado if p.estado else 'Activo' }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="md:col-span-3 space-y-4">
+            <div class="bg-white p-5 card-shadow text-center rounded-sm">
+                <p class="text-blue-950 text-[11px] font-black uppercase">Consultas realizadas hoy</p>
+                <p class="text-2xl font-bold text-blue-950">{{ total_pacientes }}</p>
+            </div>
+
+            <div class="bg-white p-5 card-shadow text-center rounded-sm">
+                <p class="text-blue-950 text-[11px] font-black uppercase">Citas por atender</p>
+                <p class="text-2xl font-bold text-blue-950 mt-2">{{ citas_hoy }}</p>
+            </div>
+            <div class="bg-eus-dark p-5 card-shadow text-blue-600 rounded-sm">
+                <p class="text-xs opacity-70 mb-2">Estado del Sistema</p>
+                <div class="flex items-center">
+                    <div class="w-3 h-3 bg-green-400 rounded-full mr-2"></div>
+                    <span class="text-sm font-bold">Base de Datos Conectada</span>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    <div id="modalPaciente" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[100]">
+        <div class="bg-white rounded-sm max-w-lg w-full p-8 shadow-2xl">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 mb-4 rounded flex items-center shadow-sm">
+                <i class="fas fa-exclamation-circle mr-2 text-red-500"></i>
+                <span class="font-bold text-sm">{{ message }}</span>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+            <h2 class="text-2xl font-black text-[#242552] mb-6">Registrar Nuevo Paciente</h2>
+            <form action="/add_patient" method="POST" class="space-y-4">
+
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">Nombre Completo</label>
+                    <input type="text" name="nombre" required
+                        class="w-full bg-blue-100 border-none rounded-xl px-4 py-2 outline-none focus:ring-2 ring-blue-300">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase">CURP</label>
+                        <input type="text" name="curp" required maxlength="18" minlength="18"
+                            class="w-full bg-blue-100 border-none rounded-xl px-4 py-2 outline-none focus:ring-2 ring-blue-300 uppercase">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase">Edad</label>
+                        <input type="number" name="edad" required
+                            class="w-full bg-blue-100 border-none rounded-xl px-4 py-2 outline-none focus:ring-2 ring-blue-300">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase">NSS</label>
+                        <input type="text" name="nss" required maxlength="11" minlength="11" pattern="\d*"
+                            class="w-full bg-blue-100 border-none rounded-xl px-4 py-2 outline-none focus:ring-2 ring-blue-300">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-8">
+                    <button type="button" onclick="closeModal()"
+                        class="px-6 py-2 text-gray-500 font-bold">Cancelar</button>
+                    <button type="submit"
+                        class="px-6 py-2 bg-eus-dark text-white rounded-xl font-bold shadow-lg hover:bg-blue-600 transition">Guardar
+                        Paciente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="modalConsulta" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[100]">
+        <div class="bg-white rounded-sm max-w-lg w-full p-8 shadow-2xl">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-black text-eus-dark">Iniciar Consulta</h2>
+                <p class="text-gray-500 text-sm font-medium">Busca al paciente por su CURP</p>
+            </div>
+
+            <form action="/preparar_consulta" method="POST" class="space-y-6">
+                <div class="relative">
+                    <label class="text-xs font-bold text-gray-500 uppercase">CURP
+                        del Paciente</label>
+                    <input type="text" name="curp"
+                        class="w-full bg-blue-100 border-2 border-transparent focus:border-blue-300 rounded-xl px-6 py-2 outline-none text-eus-dark font-bold transition">
+                </div>
+
+                <div class="flex flex-col space-y-3 pt-4">
+                    <button type="submit"
+                        class="px-6 py-3 bg-eus-dark text-white rounded-xl font-bold shadow-lg hover:bg-blue-600 transition">
+                        BUSCAR Y CONTINUAR
+                    </button>
+                    <button type="button" onclick="closeModalConsulta()"
+                        class="w-full text-gray-500 font-bold text-sm hover:text-gray-600 transition">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="modalAgenda" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[100]">
+        <div class="bg-white rounded-sm max-w-lg w-full p-10 shadow-2xl overflow-hidden relative">
+
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-black text-[#242552]">Agendar Cita</h2>
+                <p class="text-gray-500 text-sm font-medium">Ingresa los detalles de la
+                    próxima visita</p>
+            </div>
+
+            <form action="/agendar_cita" method="POST" class="space-y-3">
+                <div class="relative">
+                    <label class="text-xs font-bold text-gray-500 uppercase">
+                        Paciente (Nombre, CURP o NSS)
+                    </label>
+                    <input type="text" id="inputBusquedaAgenda" oninput="buscarParaAgenda()" autocomplete="off"
+                        placeholder="Escribe para buscar..."
+                        class="w-full bg-blue-100 border-2 border-transparent focus:border-blue-300 rounded-xl px-6 py-2 outline-none text-white font-bold transition">
+
+                    <div id="sugerenciasAgenda"
+                        class="absolute top-full left-0 right-0 bg-white mt-2 rounded-2xl shadow-2xl border border-gray-100 hidden z-[200] overflow-hidden">
+                    </div>
+
+                    <input type="hidden" name="curp" id="curpSeleccionada">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase">Fecha</label>
+                        <input type="date" name="fecha" required
+                            class="w-full bg-blue-100 border-2 border-transparent focus:border-blue-300 rounded-xl px-6 py-2 outline-none text-[#242552] font-bold transition text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase">Hora</label>
+                        <input type="time" name="hora" required
+                            class="w-full bg-blue-100 border-2 border-transparent focus:border-blue-300 rounded-xl px-6 py-2 outline-none text-[#242552] font-bold transition text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">
+                        Especialidad / Motivo
+                    </label>
+                    <input type="text" name="motivo" placeholder="Ej. Cardiología, Pediatría, Seguimiento..." required
+                        class="w-full bg-blue-100 border-2 border-transparent focus:border-blue-300 rounded-xl px-6 py-2 outline-none text-[#242552] font-bold transition">
+                </div>
+
+                <div class="flex flex-col space-y-3 pt-4">
+                    <button type="submit"
+                        class="px-6 py-3 bg-eus-dark text-white rounded-xl font-bold shadow-lg hover:bg-blue-600 transition">
+                        Confirmar y Agendar
+                    </button>
+                    <button type="button" onclick="document.getElementById('modalAgenda').classList.add('hidden')"
+                        class="w-full text-gray-500 font-bold text-sm hover:text-gray-600 transition">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        // 1. Tus funciones existentes para abrir/cerrar manualmente
+        function openModalConsulta() {
+            const modal = document.getElementById('modalConsulta');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModalConsulta() {
+            const modal = document.getElementById('modalConsulta');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // 2. AQUÍ PONES EL NUEVO CÓDIGO
+        // Este se ejecuta solo cuando la página carga y detecta un error
+        document.addEventListener("DOMContentLoaded", function () {
+            {% with messages = get_flashed_messages(with_categories = true) %}
+            {% if messages %}
+            // IMPORTANTE: Asegúrate de que el ID sea 'modalPaciente' 
+            // o el ID que use tu recuadro de registro
+            const modal = document.getElementById('modalPaciente');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+            {% endif %}
+            {% endwith %}
+        });
+
+        async function buscarParaAgenda() {
+            const input = document.getElementById('inputBusquedaAgenda');
+            const lista = document.getElementById('sugerenciasAgenda');
+            const query = input.value;
+
+            if (query.length < 2) {
+                lista.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/sugerencias_pacientes?q=${query}`);
+                const pacientes = await response.json();
+
+                if (pacientes.length > 0) {
+                    lista.innerHTML = '';
+                    pacientes.forEach(p => {
+                        const div = document.createElement('div');
+                        div.className = "px-6 py-4 hover:bg-blue-50 cursor-pointer flex items-center border-b border-gray-50 last:border-none";
+                        div.innerHTML = `
+                    <div class="flex-grow">
+                        <p class="font-bold text-[#242552] text-sm">${p.nombre}</p>
+                        <div class="flex space-x-3 text-[9px]">
+                            <span class="text-gray-400 font-mono">CURP: ${p.curp}</span>
+                            <span class="text-blue-500 font-bold">NSS: ${p.nss}</span>
+                        </div>
+                    </div>
+                `;
+
+                        // Al dar clic, llenamos el input con el nombre y garantizamos que la CURP viaje a Flask
+                        div.onclick = () => {
+                            input.value = p.nombre;
+
+                            // Buscamos el elemento oculto del formulario
+                            let hiddenCurp = document.getElementById('curpSeleccionada');
+                            if (!hiddenCurp) {
+                                // Si por alguna razón no existe en el HTML, lo creamos dinámicamente para que Flask no reciba null
+                                hiddenCurp = document.createElement('input');
+                                hiddenCurp.type = 'hidden';
+                                hiddenCurp.id = 'curpSeleccionada';
+                                input.parentNode.appendChild(hiddenCurp);
+                            }
+
+                            // LE ASIGNAMOS EL NAME CORRECTO PARA EL BACKEND
+                            hiddenCurp.name = 'curp_paciente';
+                            hiddenCurp.value = p.curp;
+
+                            lista.classList.add('hidden');
+                        };
+                        lista.appendChild(div);
+                    });
+                    lista.classList.remove('hidden');
+                } else {
+                    lista.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        }
+
+        async function buscarSugerencias() {
+            const input = document.getElementById('inputGoogle');
+            const lista = document.getElementById('listaSugerencias');
+            const query = input.value;
+
+            if (query.length < 2) {
+                lista.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/sugerencias_pacientes?q=${query}`);
+                const pacientes = await response.json();
+
+                if (pacientes.length > 0) {
+                    lista.innerHTML = ''; // Limpiar lista previa
+                    pacientes.forEach(p => {
+                        const div = document.createElement('div');
+                        div.className = "px-6 py-4 hover:bg-blue-50 cursor-pointer flex items-center border-b border-gray-50 last:border-none";
+                        div.innerHTML = `
+                    <i class="fas fa-history text-gray-300 mr-4"></i>
+                    <div>
+                        <p class="font-bold text-[#242552] text-sm">${p.nombre}</p>
+                        <p class="text-[10px] text-gray-400 font-mono">${p.curp}</p>
+                    </div>
+                `;
+                        // ACTUALIZADO: Al dar clic, redirecciona directamente al perfil del paciente
+                        div.onclick = () => window.location.href = `/perfil/${p.curp}`;
+                        lista.appendChild(div);
+                    });
+                    lista.classList.remove('hidden');
+                } else {
+                    lista.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error("Error al buscar sugerencias:", error);
+            }
+        }
+
+        // Cerrar la lista si el usuario hace clic fuera del buscador
+        document.addEventListener('click', (e) => {
+            if (document.getElementById('inputGoogle') && !document.getElementById('inputGoogle').contains(e.target)) {
+                document.getElementById('listaSugerencias').classList.add('hidden');
+            }
+        });
+        function toggleDropdown() {
+            const dropdown = document.getElementById('profileDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+
+        // Opcional: Cerrar el menú si el usuario hace clic fuera de él
+        window.onclick = function (event) {
+            if (!event.target.closest('button')) {
+                const dropdowns = document.getElementsByClassName("profile-dropdown");
+                const dropdown = document.getElementById('profileDropdown');
+                if (dropdown && !dropdown.classList.contains('hidden')) {
+                    dropdown.classList.add('hidden');
+                }
+            }
+        }
+        function openModal() { document.getElementById('modalPaciente').classList.replace('hidden', 'flex'); }
+        function closeModal() { document.getElementById('modalPaciente').classList.replace('flex', 'hidden'); }
+    </script>
+
+
+</body>
+
+</html>

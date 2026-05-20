@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>EUS - Anexo de Neurología</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        /* Estilos CSS personalizados */
+        .hoja-pdf {
+            width: 210mm;
+            /* Ancho estándar A4 */
+            min-height: 297mm;
+            /* Alto estándar A4 */
+            padding: 15mm;
+            margin: 0 auto;
+            /* Centra la hoja en pantalla */
+            background: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            /* Sombra decorativa */
+            position: relative;
+            font-family: 'Times New Roman', Times, serif;
+            /* Fuente formal para documentos */
+        }
+
+        /* Clase para los campos que se llenan dinámicamente */
+        .linea-dato {
+            border-bottom: 1px solid black;
+            /* Simula una línea de escritura */
+            display: inline-block;
+            min-width: 10px;
+            padding: 0 5px;
+            font-weight: bold;
+            color: #242552;
+            font-size: 12px;
+        }
+
+        .etiqueta-doc {
+            font-size: 12px;
+            font-weight: normal;
+        }
+
+        /* Grid para organizar antecedentes en 3 columnas */
+        .grid-patologicos {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+
+        @media screen {
+            .hoja-pdf {
+                margin-bottom: 50px;
+                /* Espacio de separación en pantalla */
+                display: block;
+                /* Asegura que no intenten ponerse una al lado de la otra */
+            }
+        }
+
+        .q-step {
+            display: none;
+        }
+
+        .q-step.active {
+            display: block;
+        }
+
+        /* Ajustes específicos para cuando se presiona "Imprimir" */
+        @media print {
+            .no-print {
+                display: none;
+
+            }
+
+            .salto-pagina {
+                page-break-after: always;
+            }
+
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            @page {
+                margin: 0;
+                size: auto;
+            }
+
+            /* Oculta el panel del asistente */
+            .hoja-pdf {
+                box-shadow: none !important;
+                margin: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                padding: 10mm 15mm !important;
+                /* Ajusta el padding superior para el logo */
+                position: relative;
+                /* Evita que el navegador meta saltos extra por accidente */
+                page-break-inside: avoid;
+            }
+
+            /* Ajusta la hoja al papel */
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 py-10">
+    <div class="no-print fixed left-5 top-10 w-96 bg-white p-6 rounded-sm shadow-2xl z-50 max-h-[90vh] overflow-y-auto">
+        <div class="mb-6">
+            <a href="{{ url_for('perfil_paciente', curp=paciente.curp) }}"
+                class="text-[#242552] font-bold hover:underline text-sm flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i> Volver al perfil de {{ paciente.nombre }}
+            </a>
+        </div>
+        <h3 class="font-black text-[#242552] mb-4 border-b pb-2 flex items-center">
+            <i class="fas fa-user-md mr-2"></i> ASISTENTE MÉDICO NEUROLÓGICO
+            <a href="/dashboard" class="ml-auto flex items-center space-x-2 hover:opacity-80 transition">
+                <img src="/static/img/logoeuscolor.png" class="h-10 w-auto object-contain">
+            </a>
+        </h3>
+
+        <div id="asistente-preguntas">
+            <div id="q-step-1" class="q-step active">
+                <p class="text-sm uppercase font-bold mb-3">Evaluación del Estado de Salud Mental</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Nivel de Conciencia:</label>
+                        <input type="text" oninput="updateDoc('nivel_conciencia_val', this.value)"
+                            value="{{ anexoneuro.datos.nivel_conciencia if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Escala de Glasgow Ocular:</label>
+                        <select oninput="updateDoc('escala_glasgowo_val', this.value)"
+                            value="{{ anexoneuro.datos.escala_glasgowo if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Escala de Glasgow Verbal:</label>
+                        <select oninput="updateDoc('escala_glasgowver_val', this.value)"
+                            value="{{ anexoneuro.datos.escala_glasgowver if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Escala de Glasgow Motor:</label>
+                        <select oninput="updateDoc('escala_glasgowmot_val', this.value)"
+                            value="{{ anexoneuro.datos.escala_glasgowmot if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Total:</label>
+                        <input type="text" oninput="updateDoc('total_eg_val', this.value)"
+                            value="{{ anexoneuro.datos.total_eg if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Orientacion (Tiempo):</label>
+                        <input type="text" oninput="updateDoc('orientacion_tiempo_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.orientacion_tiempo if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Orientacion (Espacio):</label>
+                        <input type="text" oninput="updateDoc('orientacion_espacio_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.orientacion_espacio if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Orientacion (Persona):</label>
+                        <input type="text" oninput="updateDoc('orientacion_persona_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.orientacion_persona if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Atención/Concentración:</label>
+                        <input type="text" oninput="updateDoc('atencion_concentracion_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.atencion_concentracion if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Memoria Corto Plazo:</label>
+                        <input type="text" oninput="updateDoc('memoria_corto_plazo_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.memoria_corto_plazo if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Memoria Largo Plazo:</label>
+                        <input type="text" oninput="updateDoc('memoria_largo_plazo_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.memoria_largo_plazo if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Lenguaje (Fluidez):</label>
+                        <input type="text" oninput="updateDoc('lenguaje_fluidez_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.lenguaje_fluidez if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Lenguaje (Comprensión):</label>
+                        <input type="text" oninput="updateDoc('lenguaje_comprension_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.lenguaje_comprension if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Lenguaje (Nominación):</label>
+                        <input type="text" oninput="updateDoc('lenguaje_nominacion_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.lenguaje_nominacion if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Cálculo y Juicio:</label>
+                        <input type="text" oninput="updateDoc('calculo_juicio_val', this.value)"
+                            value="{{ anexoneuro.datos.calculo_juicio if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-200 outline-none p-1 focus:border-blue-950">
+                    </div>
+                </div>
+            </div>
+            <div id="q-step-2" class="q-step">
+                <p class="text-sm uppercase font-bold mb-3">Exploración Nervio Craneal</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">I (Olfatorio):</label>
+                        <input type="text" oninput="updateDoc('olfatorio_val', this.value)"
+                            value="{{ anexoneuro.datos.olfatorio if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">II Óptico (Agudeza Visual):</label>
+                        <input type="text" oninput="updateDoc('optico_agudeza_val', this.value)"
+                            value="{{ anexoneuro.datos.optico_agudeza if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">II Óptico (Campos Visuales):</label>
+                        <input type="text" oninput="updateDoc('optico_campos_val', this.value)"
+                            value="{{ anexoneuro.datos.optico_campos if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">III, IV, V (Motricidad
+                            Ocular):</label>
+                        <input type="text" oninput="updateDoc('motricidad_ocular_val', this.value)"
+                            value="{{ anexoneuro.datos.motricidad_ocular if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">VI Trigémino (Sensitivo):</label>
+                        <input type="text" oninput="updateDoc('trigemino_sensitivo_val', this.value)"
+                            value="{{ anexoneuro.datos.trigemino_sensitivo if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">VI Trigémino (Motriz):</label>
+                        <input type="text" oninput="updateDoc('trigemino_motriz_val', this.value)"
+                            value="{{ anexoneuro.datos.trigemino_motriz if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">VII Facial (Simetría):</label>
+                        <input type="text" oninput="updateDoc('facial_simetria_val', this.value)"
+                            value="{{ anexoneuro.datos.facial_simetria if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">VIII Vestibulococlear:</label>
+                        <input type="text" oninput="updateDoc('vestibulococlear_val', this.value)"
+                            value="{{ anexoneuro.datos.vestibulococlear if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">IX, X Vago/Glosofaríngeo:</label>
+                        <input type="text" oninput="updateDoc('vago_glosofaringeo_val', this.value)"
+                            value="{{ anexoneuro.datos.vago_glosofaringeo if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">XI Accesorio:</label>
+                        <input type="text" oninput="updateDoc('accesorio_val', this.value)"
+                            value="{{ anexoneuro.datos.accesorio if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">XII Hipogloso:</label>
+                        <input type="text" oninput="updateDoc('hipogloso_val', this.value)"
+                            value="{{ anexoneuro.datos.hipogloso if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Fondo de Ojo:</label>
+                        <input type="text" oninput="updateDoc('fondo_ojo_val', this.value)"
+                            value="{{ anexoneuro.datos.fondo_ojo if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                </div>
+            </div>
+            <div id="q-step-3" class="q-step">
+                <p class="text-sm uppercase font-bold mb-3">Sistema Motor y Reflejos</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Trofismo (Normal):</label>
+                        <input type="text" oninput="updateDoc('trofismon_val', this.value)" placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.trofismon if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Trofismo (Hipotrofía):</label>
+                        <input type="text" oninput="updateDoc('trofismo_h_val', this.value)" placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.trofismo_h if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Trofismo (Atrofia):</label>
+                        <input type="text" oninput="updateDoc('trofismo_a_val', this.value)" placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.trofismo_a if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Tono (Normal):</label>
+                        <input type="text" oninput="updateDoc('tono_normal_val', this.value)" placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.tono_normal if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Tono (Espasticidad):</label>
+                        <input type="text" oninput="updateDoc('tono_espasticidad_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.tono_espasticidad if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Tono (Rigidez):</label>
+                        <input type="text" oninput="updateDoc('tono_rigidez_val', this.value)" placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.tono_rigidez if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <p class="text-xs font-black text-blue-900 border-b">Fuerza Muscular (Escala de Daniels 0-5)</p>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">MS Derecho (Proximal):</label>
+                        <select oninput="updateDoc('ms_derecho_proximal_val', this.value)"
+                            value="{{ anexoneuro.datos.ms_derecho_proximal if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">MS Derecho (Distal):</label>
+                        <select oninput="updateDoc('ms_derecho_distal_val', this.value)"
+                            value="{{ anexoneuro.datos.ms_derecho_distal if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">MS Izquierdo (Proximal):</label>
+                        <select oninput="updateDoc('ms_izquierdo_proximal_val', this.value)"
+                            value="{{ anexoneuro.datos.ms_izquierdo_proximal if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">MS Izquierdo (Distal):</label>
+                        <select oninput="updateDoc('ms_izquierdo_distal_val', this.value)"
+                            value="{{ anexoneuro.datos.ms_izquierdo_distal if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+                    <p class="text-xs font-black text-blue-900 border-b">Reflejos Osteotendinosos (ROT)</p>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Bicipital:</label>
+                        <select oninput="updateDoc('bicipital_val', this.value)"
+                            value="{{ anexoneuro.datos.bicipital if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Tricipital:</label>
+                        <select oninput="updateDoc('tricipital_val', this.value)"
+                            value="{{ anexoneuro.datos.tricipital if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Estiloradial:</label>
+                        <select oninput="updateDoc('estiloradial_val', this.value)"
+                            value="{{ anexoneuro.datos.estiloradial if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Rotuliano:</label>
+                        <select oninput="updateDoc('rotuliano_val', this.value)"
+                            value="{{ anexoneuro.datos.rotuliano if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Aquileo:</label>
+                        <select oninput="updateDoc('aquileo_val', this.value)"
+                            value="{{ anexoneuro.datos.aquileo if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>Seleccione una opción</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Reflejos Patológicos
+                            (Babinski):</label>
+                        <select oninput="updateDoc('babinski_val', this.value)"
+                            value="{{ anexoneuro.datos.babinski if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Reflejos Patológicos
+                            (Hoffmann):</label>
+                        <select oninput="updateDoc('hoffmann_val', this.value)"
+                            value="{{ anexoneuro.datos.hoffmann if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-blue-950 outline-none p-1 bg-transparent">
+                            <option value="" selected disabled>SELECCIONE UNA OPCION</option>
+                            <option value="SI">SI</option>
+                            <option value="NO">NO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Otros:</label>
+                        <input type="text" oninput="updateDoc('otros_rp_val', this.value)" placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.otros_rp if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                </div>
+            </div>
+            <div id="q-step-4" class="q-step">
+                <p class="text-sm uppercase font-bold mb-3">Sensibilidad, Coordinación y Marcha</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Sensibilidad Superficial
+                            (Tacto):</label>
+                        <input type="text" oninput="updateDoc('sensibilidad_tacto_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.sensibilidad_tacto if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Sensibilidad Superficial
+                            (Dolor):</label>
+                        <input type="text" oninput="updateDoc('sensibilidad_dolor_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.sensibilidad_dolor if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Sensibilidad Superficial
+                            (Temperatura):</label>
+                        <input type="text" oninput="updateDoc('sensibilidad_temperatura_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.sensibilidad_temperatura if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Sensibilidad Profunda
+                            (Propiocepción):</label>
+                        <input type="text" oninput="updateDoc('sensibilidad_propiocepcion_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.sensibilidad_propiocepcion if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Sensibilidad Profunda
+                            (Vibración):</label>
+                        <input type="text" oninput="updateDoc('sensibilidad_vibracion_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.sensibilidad_vibracion if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Coordinación (Dedo-Nariz):</label>
+                        <input type="text" oninput="updateDoc('coordinacion_dedo_nariz_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.coordinacion_dedo_nariz if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Coordinación (Talón-Rodilla):</label>
+                        <input type="text" oninput="updateDoc('coordinacion_talon_rodilla_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.coordinacion_talon_rodilla if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Coordinación (Diadococinesia):</label>
+                        <input type="text" oninput="updateDoc('coordinacion_diadococinesia_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.coordinacion_diadococinesia if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Romberg:</label>
+                        <input type="text" oninput="updateDoc('romberg_val', this.value)"
+                            value="{{ anexoneuro.datos.romberg if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Marcha (Libre):</label>
+                        <input type="text" oninput="updateDoc('marcha_libre_val', this.value)" placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.marcha_libre if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Marcha (Ataxia):</label>
+                        <input type="text" oninput="updateDoc('marcha_ataxia_val', this.value)" placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.marcha_ataxia if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Marcha (Espástica):</label>
+                        <input type="text" oninput="updateDoc('marcha_espastica_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.marcha_espastica if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Marcha (Parkinsoniana):</label>
+                        <input type="text" oninput="updateDoc('marcha_parkinsoniana_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.marcha_parkinsoniana if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Movimientos Anormales
+                            (Temblor):</label>
+                        <input type="text" oninput="updateDoc('mov_anormal_temblor_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.mov_anormal_temblor if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Movimientos Anormales
+                            (Coreicos):</label>
+                        <input type="text" oninput="updateDoc('mov_anormal_coreicos_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.mov_anormal_coreicos if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Movimientos Anormales
+                            (Distonías):</label>
+                        <input type="text" oninput="updateDoc('mov_anormal_distonias_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.mov_anormal_distonias if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Movimientos Anormales (Otros):</label>
+                        <input type="text" oninput="updateDoc('mov_anormal_otros_val', this.value)"
+                            placeholder="Colocar X"
+                            value="{{ anexoneuro.datos.mov_anormal_otros if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                </div>
+            </div>
+            <div id="q-step-5" class="q-step">
+                <p class="text-sm uppercase font-bold mb-3">Impresión Diagnóstica y Plan</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Sindrome Etiológico:</label>
+                        <input type="text" oninput="updateDoc('sindrome_etiologico_val', this.value)"
+                            value="{{ anexoneuro.datos.sindrome_etiologico if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Sindrome Topográfico:</label>
+                        <input type="text" oninput="updateDoc('sindrome_topografico_val', this.value)"
+                            value="{{ anexoneuro.datos.sindrome_topografico if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Diagnóstico Nosologico:</label>
+                        <input type="text" oninput="updateDoc('diagnostico_nosologico_val', this.value)"
+                            value="{{ anexoneuro.datos.diagnostico_nosologico if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Estudios Solicitados (EEG, RM, TC,
+                            EMG):</label>
+                        <input type="text" oninput="updateDoc('estudios_solicitados_val', this.value)"
+                            value="{{ anexoneuro.datos.estudios_solicitados if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                    <div>
+                        <label class="text-xs uppercase font-black text-gray-400">Tratamiento y Pronostico:</label>
+                        <input type="text" oninput="updateDoc('tratamiento_pronostico_val', this.value)"
+                            value="{{ anexoneuro.datos.tratamiento_pronostico if anexoneuro and anexoneuro.datos else '' }}"
+                            class="w-full border-b-2 border-red-100 outline-none p-1">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 flex space-x-2">
+            <button type="button" onclick="changeStep(-1)"
+                class="flex-1 py-2 bg-gray-100 rounded-xl font-bold text-gray-500">Anterior</button>
+            <button type="button" onclick="changeStep(1)" id="btnNext"
+                class="flex-1 py-2 bg-[#242552] text-white rounded-xl font-bold">Siguiente</button>
+        </div>
+        <div class="space-y-3 mt-6 no-print"> <!-- 'no-print' es clave para que no salgan en el papel -->
+
+            <button type="button" onclick="guardarAnexoNeurologia()"
+                class="bg-[#242552] text-white w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-opacity-90 transition">
+                <i class="fas fa-save mr-2"></i> GUARDAR ANEXO DE NEUROLOGÍA
+            </button>
+            <!-- Botón 2: Solo Imprimir (Blanco con borde azul) -->
+            <button type="button" onclick="window.print()"
+                class="bg-white text-[#242552] w-full py-3 rounded-xl font-bold border-2 border-[#242552] flex items-center justify-center gap-2 hover:bg-blue-50 transition">
+                <i class="fas fa-print"></i>
+                IMPRIMIR HOJA CLÍNICA
+            </button>
+        </div>
+    </div>
+
+    <div class="hoja-pdf">
+        <div class="flex justify-between items-start mb-8">
+            <img src="/static/img/logoeuscolor.png" class="h-16">
+            <div class="text-right">
+                <h1 class="text-xl font-bold">EXPEDIENTE CLÍNICO ÚNICO DE SALUD</h1>
+                <h1 class="text-xl font-bold">ANEXO: NEUROLOGÍA</h1>
+                <p class="linea-dato flex-grow min-w-0 truncate uppercase">{{ paciente.nombre }}</p>
+                <p id="paciente_curp_doc" class="linea-dato flex-grow min-w-0 truncate uppercase">{{ paciente.curp }}
+                </p>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <h2 class="text-sm font-bold border-b border-black mb-4">EVALUACIÓN DEL ESTADO DE SALUD MENTAL</h2>
+            <div class="text-[12px] space-y-2">
+                <div class="flex flex-wrap items-end gap-y-2 gap-x-6 border-b-0">
+                    <div class="flex items-end gap-x-3">
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">NIVEL DE CONCIENCIA:</span>
+                            <span id="nivel_conciencia_val" class="linea-dato w-20 truncate uppercase text-center">
+                                {{ anexoneuro.datos.nivel_conciencia if anexoneuro and anexoneuro.datos else '' }}
+                            </span>
+                        </div>
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">ESCALA DE GLASGOW O:</span>
+                            <span id="escala_glasgowo_val" class="linea-dato w-10 truncate uppercase text-center">
+                                {{ anexoneuro.datos.escala_glasgowo if anexoneuro and anexoneuro.datos else '' }}
+                            </span>
+                        </div>
+
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">V:</span>
+                            <span id="escala_glasgowver_val" class="linea-dato w-10 truncate uppercase text-center">
+                                {{ anexoneuro.datos.escala_glasgowver if anexoneuro and anexoneuro.datos else '' }}
+                            </span>
+                        </div>
+
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">M:</span>
+                            <span id="escala_glasgowmot_val" class="linea-dato w-10 truncate uppercase text-center">
+                                {{ anexoneuro.datos.escala_glasgowmot if anexoneuro and anexoneuro.datos else '' }}
+                            </span>
+                        </div>
+
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1 font-bold">TOTAL:</span>
+                            <span id="total_eg_val" class="linea-dato w-10 truncate uppercase text-center font-bold">
+                                {{ anexoneuro.datos.total_eg if anexoneuro and anexoneuro.datos else '' }}
+                            </span>
+                            <span class="whitespace-nowrap ml-1">/15</span>
+                        </div>
+                    </div>
+                    <div class="flex items-end gap-x-3">
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">ORIENTACIÓN: TIEMPO: [</span>
+                            <span id="orientacion_tiempo_val" class="linea-dato w-4 truncate uppercase">{{
+                                anexoneuro.datos.orientacion_tiempo if anexoneuro and anexoneuro.datos else ''
+                                }}</span>
+                            <span class="whitespace-nowrap mr-1"> ]</span>
+                        </div>
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">ESPACIO: [</span>
+                            <span id="orientacion_espacio_val" class="linea-dato w-4 truncate uppercase">{{
+                                anexoneuro.datos.orientacion_espacio if anexoneuro and anexoneuro.datos else ''
+                                }}</span>
+                            <span class="whitespace-nowrap mr-1"> ]
+                        </div>
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">PERSONA: [</span>
+                            <span id="orientacion_persona_val" class="linea-dato w-4 truncate uppercase">{{
+                                anexoneuro.datos.orientacion_persona if anexoneuro and anexoneuro.datos else ''
+                                }}</span>
+                            <span class="whitespace-nowrap mr-1"> ]
+                        </div>
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">LENGUAJE: FLUIDEZ: [</span>
+                            <span id="lenguaje_fluidez_val" class="linea-dato w-4 truncate uppercase">{{
+                                anexoneuro.datos.lenguaje_fluidez if anexoneuro and anexoneuro.datos else ''
+                                }}</span>
+                            <span class="whitespace-nowrap mr-1"> ]
+                        </div>
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">COMPRENSIÓN: [</span>
+                            <span id="lenguaje_comprension_val" class="linea-dato w-4 truncate uppercase">{{
+                                anexoneuro.datos.lenguaje_comprension if anexoneuro and anexoneuro.datos else
+                                ''
+                                }}</span>
+                            <span class="whitespace-nowrap mr-1"> ]
+                        </div>
+                    </div>
+                    <div class="flex items-end gap-x-3">
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">NOMINACIÓN: [</span>
+                            <span id="lenguaje_nominacion_val" class="linea-dato w-4 truncate uppercase">{{
+                                anexoneuro.datos.lenguaje_nominacion if anexoneuro and anexoneuro.datos else ''
+                                }}</span>
+                            <span class="whitespace-nowrap mr-1"> ]
+                        </div>
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">CÁLCULO Y JUICIO:</span>
+                            <span id="calculo_juicio_val" class="linea-dato w-64 truncate uppercase">{{
+                                anexoneuro.datos.calculo_juicio if anexoneuro and anexoneuro.datos else ''
+                                }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mt-6">
+            <h2 class="text-sm font-bold border-b border-black mb-4">EXPLORACIÓN NERVIO CRANEAL</h2>
+            <div class="text-[12px] space-y-2">
+                <div class="flex flex-wrap items-end gap-y-2 gap-x-6 border-b-0">
+                    <div class="flex items-end gap-x-3">
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">I (OLFATORIO):</span>
+                            <span id="olfatorio_val" class="linea-dato w-5 truncate uppercase">{{
+                                anexoneuro.datos.olfatorio if anexoneuro and anexoneuro.datos else
+                                ''
+                                }}</span>
+                        </div>
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">II ÓPTICO (AGUDEZA):</span>
+                            <span id="optico_agudeza_val" class="linea-dato w-5 truncate uppercase">{{
+                                anexoneuro.datos.optico_agudeza if anexoneuro and anexoneuro.datos else
+                                ''
+                                }}</span>
+                        </div>
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">II ÓPTICO (CAMPOS):</span>
+                            <span id="optico_campos_val" class="linea-dato w-5 truncate uppercase">{{
+                                anexoneuro.datos.optico_campos if anexoneuro and anexoneuro.datos else
+                                ''
+                                }}</span>
+                        </div>
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">III, IV, V (MOTRICIDAD OCULAR):</span>
+                            <span id="motricidad_ocular_val" class="linea-dato w-5 truncate uppercase">{{
+                                anexoneuro.datos.motricidad_ocular if anexoneuro and anexoneuro.datos else
+                                ''
+                                }}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-end gap-x-3">
+                        <div class="flex items-end ">
+                            <span class="whitespace-nowrap mr-1">VI TRIGÉMINO: SENSATIVO:</span>
+                            <span id="trigemino_sensativo_val" class="linea-dato w-12 truncate uppercase">{{
+                                anexoneuro.datos.trigemino_sensativo if anexoneuro and anexoneuro.datos
+                                else ''
+                                }}</span>
+                        </div>
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">MOTOR:</span>
+                            <span id="trigemino_motriz_val" class="linea-dato w-12 truncate uppercase">{{
+                                anexoneuro.datos.trigemino_motriz if anexoneuro and anexoneuro.datos else
+                                ''
+                                }}</span>
+                        </div>
+                        <div class="col-span-4 flex items-end">
+                            <span class="whitespace-nowrap mr-1">VII (FACIAL): SIMETRIA:</span>
+                            <span id="facial_simetria_val" class="linea-dato w-12 truncate uppercase">{{
+                                anexoneuro.datos.facial_simetria if anexoneuro and anexoneuro.datos else ''
+                                }}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-end gap-x-3">
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">VII (VESTIBULOCOCLEAR):</span>
+                            <span id="vestibulococlear_val" class="linea-dato w-20 truncate uppercase">{{
+                                anexoneuro.datos.vestibulococlear if anexoneuro and anexoneuro.datos else
+                                ''
+                                }}</span>
+                        </div>
+                        <div class="items-end">
+                            <span class="whitespace-nowrap mr-1">IX, X (VAGO/GLOSOFARÍNGEO):</span>
+                            <span id="vago_glosofaringeo_val" class="linea-dato w-12 truncate uppercase">{{
+                                anexoneuro.datos.vago_glosofaringeo if anexoneuro and anexoneuro.datos else
+                                ''
+                                }}</span>
+                        </div>
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">XI (ACCESORIO):</span>
+                            <span id="accesorio_val" class="linea-dato w-12 truncate uppercase">{{
+                                anexoneuro.datos.accesorio if anexoneuro and anexoneuro.datos else ''
+                                }}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-end gap-x-3">
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">XII (HIPOGLOSO):</span>
+                            <span id="hipogloso_val" class="linea-dato w-12 truncate uppercase">{{
+                                anexoneuro.datos.hipogloso if anexoneuro and anexoneuro.datos else ''
+                                }}</span>
+                        </div>
+                        <div class="flex items-end">
+                            <span class="whitespace-nowrap mr-1">FONDO DE OJO:</span>
+                            <span id="fondo_ojo_val" class="linea-dato w-12 truncate uppercase">{{
+                                anexoneuro.datos.fondo_ojo if anexoneuro and anexoneuro.datos else ''
+                                }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6">
+                <h2 class="text-sm font-bold border-b border-black mb-4">SISTEMA MOTOR Y REFLEJOS</h2>
+                <div class="text-[12px] space-y-3">
+                    <div class="flex flex-wrap items-end gap-y-2 gap-x-6 border-b-0">
+                        <div class="flex items-end gap-x-3">
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">TROFISMO: NORMAL [</span>
+                                <span id="trofismon_val" class="linea-dato w-5 truncate uppercase">{{
+                                    anexoneuro.datos.trofismon if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                                <span class="whitespace-nowrap mr-1">]</span>
+                            </div>
+
+                            <div class="flex item-end">
+                                <span class="whitespace-nowrap mr-1">HIPOTROFIA [</span>
+                                <span id="trofismo_h_val" class="linea-dato w-5 truncate uppercase">{{
+                                    anexoneuro.datos.trofismo_h if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                                <span class="whitespace-nowrap mr-1">]</span>
+                            </div>
+
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">ATROFIA [</span>
+                                <span id="trofismo_a_val" class="linea-dato w-5 truncate uppercase">{{
+                                    anexoneuro.datos.trofismo_a if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                                <span class="whitespace-nowrap mr-1">]</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">TONO: NORMAL [</span>
+                                <span id="tono_normal_val" class="linea-dato w-5 truncate uppercase">{{
+                                    anexoneuro.datos.tono_normal if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                                <span class="whitespace-nowrap mr-1">]</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">ESPASTICIDAD [</span>
+                                <span id="tono_espasticidad_val" class="linea-dato w-5 truncate uppercase">{{
+                                    anexoneuro.datos.tono_espasticidad if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                                <span class="whitespace-nowrap mr-1">]</span>
+                            </div>
+                        </div>
+                        <div class="flex items-end gap-x-3">
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">RIGIDEZ [</span>
+                                <span id="tono_rigidez_val" class="linea-dato w-5 truncate uppercase">{{
+                                    anexoneuro.datos.tono_rigidez if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                                <span class="whitespace-nowrap mr-1">]</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                            <div class="col-span-3 flex items-end">
+                                <span class="whitespace-nowrap mr-1 uppercase font-bold">Fuerza Muscular (Escala de
+                                    Daniels 0-5)</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-end gap-x-3">
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">MS DERECHO: PROXIMAL:</span>
+                                <span id="ms_derecho_proximal_val" class="linea-dato w-10 truncate uppercase">{{
+                                    anexoneuro.datos.ms_derecho_proximal if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                            </div>
+                            <div class="items-end">
+                                <span class="whitespace-nowrap mr-1">DISTAL:</span>
+                                <span id="ms_derecho_distal_val" class="linea-dato w-10 truncate uppercase">{{
+                                    anexoneuro.datos.ms_derecho_distal if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">MS IZQUIERDO: PROXIMAL:</span>
+                                <span id="ms_izquierdo_proximal_val" class="linea-dato w-10 truncate uppercase">{{
+                                    anexoneuro.datos.ms_izquierdo_proximal if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">DISTAL:</span>
+                                <span id="ms_izquierdo_distal_val" class="linea-dato w-10 truncate uppercase">{{
+                                    anexoneuro.datos.ms_izquierdo_distal if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-12 gap-4 mt-2 text-[12px] items-end">
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1 uppercase font-bold">Reflejos Osteotendinosos
+                                    (ROT)</span>
+                            </div>
+                        </div>
+                        <div class="flex items-end gap-x-3">
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">BICIPITAL:</span>
+                                <span id="bicipital_val" class="linea-dato w-12 truncate uppercase">{{
+                                    anexoneuro.datos.bicipital if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">TRICIPITAL:</span>
+                                <span id="tricipital_val" class="linea-dato w-12 truncate uppercase">{{
+                                    anexoneuro.datos.tricipital if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">ESTILORADIAL:</span>
+                                <span id="estiloradial_val" class="linea-dato w-12 truncate uppercase">{{
+                                    anexoneuro.datos.estiloradial if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">ROTULIANO:</span>
+                                <span id="rotuliano_val" class="linea-dato w-12 truncate uppercase">{{
+                                    anexoneuro.datos.rotuliano if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">AQUILEO:</span>
+                                <span id="aquileo_val" class="linea-dato w-12 truncate uppercase">{{
+                                    anexoneuro.datos.aquileo if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-end gap-x-3">
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">REFLEJOS PATOLÓGICOS: BABINSKI</span>
+                                <span id="babinski_val" class="linea-dato w-12 truncate uppercase">{{
+                                    anexoneuro.datos.babinski if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                            </div>
+                            <div class="flexitems-end">
+                                <span class="whitespace-nowrap mr-1">HOFFMANN:</span>
+                                <span id="hoffmann_val" class="linea-dato w-12 truncate uppercase">{{
+                                    anexoneuro.datos.hoffmann if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">OTROS:</span>
+                                <span id="otros_rp_val" class="linea-dato w-48 truncate uppercase">{{
+                                    anexoneuro.datos.otros_rp if anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <h2 class="text-sm font-bold border-b border-black mb-4">SENSIBILIDAD, COORDINACIÓN Y MARCHA</h2>
+                    <div class="text-[12px] space-y-3">
+                        <div class="flex flex-wrap items-end gap-y-2 gap-x-6 border-b-0">
+                            <div class="flex items-end gap-x-3">
+                                <div class="flex items-end">
+                                    <span class="whitespace-nowrap mr-1">SENSIBILIDAD SUPERFICIAL: TACTO: [</span>
+                                    <span id="sensibilidad_tacto_val" class="linea-dato w-5 truncate uppercase">{{
+                                        anexoneuro.datos.sensibilidad_tacto if anexoneuro and anexoneuro.datos
+                                        else ''
+                                        }}</span>
+                                    <span class="whitespace-nowrap mr-1">]</span>
+                                </div>
+                                <div class="flex items-end">
+                                    <span class="whitespace-nowrap mr-1">DOLOR: [</span>
+                                    <span id="sensibilidad_dolor_val" class="linea-dato w-5 truncate uppercase">{{
+                                        anexoneuro.datos.sensibilidad_dolor if anexoneuro and anexoneuro.datos
+                                        else ''
+                                        }}</span>
+                                    <span class="whitespace-nowrap mr-1">]</span>
+                                </div>
+                                <div class="flex items-end">
+                                    <span class="whitespace-nowrap mr-1">TEMP: [</span>
+                                    <span id="sensibilidad_temperatura_val" class="linea-dato w-5 truncate uppercase">{{
+                                        anexoneuro.datos.sensibilidad_temperatura if anexoneuro and anexoneuro.datos
+                                        else ''
+                                        }}</span>
+                                    <span class="whitespace-nowrap mr-1">]</span>
+                                </div>
+                                <div class="flex items-end">
+                                    <span class="whitespace-nowrap mr-1">PROFUNDA: PROPIOCEPCIÓN: [</span>
+                                    <span id="sensibilidad_propiocepcion_val"
+                                        class="linea-dato w-5 truncate uppercase">{{
+                                        anexoneuro.datos.sensibilidad_propiocepcion if anexoneuro and
+                                        anexoneuro.datos
+                                        else ''
+                                        }}</span>
+                                    <span class="whitespace-nowrap mr-1">]</span>
+                                </div>
+                            </div>
+                            <div class="flex items-end gap-x-3">
+                                <div class="flex items-end">
+                                    <span class="whitespace-nowrap mr-1">VIBRACION: [</span>
+                                    <span id="sensibilidad_vibracion_val" class="linea-dato w-5 truncate uppercase">{{
+                                        anexoneuro.datos.sensibilidad_vibracion if anexoneuro and anexoneuro.datos
+                                        else ''
+                                        }}</span>
+                                    <span class="whitespace-nowrap mr-1">]</span>
+                                </div>
+                                <div class="flex items-end">
+                                    <span class="whitespace-nowrap mr-1">COORDINACIÓN: DEDO-NARIZ: [</span>
+                                    <span id="sensibilidad_dedo_nariz_val" class="linea-dato w-5 truncate uppercase">{{
+                                        anexoneuro.datos.sensibilidad_dedo_nariz if
+                                        anexoneuro and anexoneuro.datos
+                                        else ''
+                                        }}</span>
+                                    <span class="whitespace-nowrap mr-1">]</span>
+                                </div>
+                                <div class="flex items-end">
+                                    <span class="whitespace-nowrap mr-1">TALÓN-RODILLA: [</span>
+                                    <span id="sensibilidad_talon_rodilla_val"
+                                        class="linea-dato w-5 truncate uppercase">{{
+                                        anexoneuro.datos.sensibilidad_talon_rodilla if
+                                        anexoneuro and anexoneuro.datos
+                                        else ''
+                                        }}</span>
+                                    <span class="whitespace-nowrap mr-1">]</span>
+                                </div>
+                                <div class="flex items-end">
+                                    <span class="whitespace-nowrap mr-1">DIADOCOCINESIA: [</span>
+                                    <span id="sensibilidad_diadococinesia_val"
+                                        class="linea-dato w-5 truncate uppercase">{{
+                                        anexoneuro.datos.sensibilidad_diadococinesia if
+                                        anexoneuro and anexoneuro.datos
+                                        else ''
+                                        }}</span>
+                                    <span class="whitespace-nowrap mr-1">]</span>
+                                </div>
+                            </div>
+                            <div class="flex items-end gap-x-3">
+                                <div class="flex items-end">
+                                    <span class="whitespace-nowrap mr-1">ROMBERG: [</span>
+                                    <span id="romberg_val" class="linea-dato w-5 truncate uppercase">{{
+                                        anexoneuro.datos._romberg if
+                                        anexoneuro and anexoneuro.datos
+                                        else ''
+                                        }}</span>
+                                    <span class="whitespace-nowrap mr-1">]</span>
+                                </div>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">MARCHA: LIBRE: [</span>
+                                <span id="marcha_libre_val" class="linea-dato w-5 truncate uppercase">{{
+                                    anexoneuro.datos.marcha_libre if
+                                    anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                                <span class="whitespace-nowrap mr-1">]</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">ATAXIA: [</span>
+                                <span id="marcha_ataxia_val" class="linea-dato w-5 truncate uppercase">{{
+                                    anexoneuro.datos.marcha_ataxia if
+                                    anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                                <span class="whitespace-nowrap mr-1">]</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">ESPÁSTICA: [</span>
+                                <span id="marcha_espastica_val" class="linea-dato w-5 truncate uppercase">{{
+                                    anexoneuro.datos.marcha_espastica if
+                                    anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                                <span class="whitespace-nowrap mr-1">]</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">HEMIPARÉTICA: [</span>
+                                <span id="marcha_hemiparetica_val" class="linea-dato flex-grow truncate uppercase">{{
+                                    anexoneuro.datos.marcha_hemiparetica if
+                                    anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                                <span class="whitespace-nowrap mr-1">]</span>
+                            </div>
+                        </div>
+                        <div class="flex items-end gap-x-3">
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">PARKINSONIANA: [</span>
+                                <span id="marcha_parkinsoniana_val" class="linea-dato w-5 truncate uppercase">{{
+                                    anexoneuro.datos.marcha_parkinsoniana if
+                                    anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                                <span class="whitespace-nowrap mr-1">]</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">MOVIMIENTOS ANORMALES: TEMBLOR: [</span>
+                                <span id="marcha_anormal_temblor_val" class="linea-dato w-5 truncate uppercase">{{
+                                    anexoneuro.datos.marcha_anormal_temblor if
+                                    anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                                <span class="whitespace-nowrap mr-1">]</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">COREICOS: [</span>
+                                <span id="marcha_anormal_coreicos_val" class="linea-dato w-5 truncate uppercase">{{
+                                    anexoneuro.datos.marcha_anormal_coreicos if
+                                    anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                                <span class="whitespace-nowrap mr-1">]</span>
+                            </div>
+                            <div class="col-span-5 flex items-end">
+                                <span class="whitespace-nowrap mr-1">DISTONÍAS:[</span>
+                                <span id="marcha_anormal_distonias_val"
+                                    class="linea-dato flex-grow truncate uppercase">{{
+                                    anexoneuro.datos.marcha_anormal_distonias if
+                                    anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                                <span class="whitespace-nowrap mr-1">]</span>
+                            </div>
+                        </div>
+                        <div class="flex items-end">
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap mr-1">OTROS:</span>
+                                <span id="marcha_anormal_otros_val" class="linea-dato w-64 truncate uppercase">{{
+                                    anexoneuro.datos.marcha_anormal_otros if
+                                    anexoneuro and anexoneuro.datos
+                                    else ''
+                                    }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <h2 class="text-sm font-bold border-b border-black mb-4">IMPRESIÓN DIAGNÓSTICA Y PLAN</h2>
+                    <div class="text-[12px] space-y-3">
+                        <div class="flex flex-wrap items-end gap-y-2 gap-x-6 border-b-0">
+                            <div class="flex items-end gap-x-3">
+                                <div class="flex items-end">
+                                    <span class="whitespace-nowrap mr-1">SÍNDROME ETIOLÓGICO:</span>
+                                    <span id="sindrome_etiologico_val" class="linea-dato w-80 truncate uppercase">{{
+                                        anexoneuro.datos.sindrome_etiologico if
+                                        anexoneuro and anexoneuro.datos
+                                        else ''
+                                        }}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-end gap-x-3">
+                                <div class="flex items-end">
+                                    <span class="whitespace-nowrap mr-1">SÍNDROME TOPOGRÁFICO:</span>
+                                    <span id="sindrome_topografico_val" class="linea-dato w-80 truncate uppercase">{{
+                                        anexoneuro.datos.sindrome_topografico if
+                                        anexoneuro and anexoneuro.datos
+                                        else ''
+                                        }}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-end gap-x-3">
+                                <div class="flex items-end">
+                                    <span class="whitespace-nowrap mr-1">SÍNDROME NOSOLOGICO:</span>
+                                    <span id="sindrome_nosologico_val" class="linea-dato w-80 truncate uppercase">{{
+                                        anexoneuro.datos.sindrome_nosologico if
+                                        anexoneuro and anexoneuro.datos
+                                        else ''
+                                        }}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-end gap-x-3">
+                                <div class="flex items-end">
+                                    <span class="whitespace-nowrap mr-1">ESTUDIOS SOLICITADOS:</span>
+                                    <span id="estudios_solicitados_val" class="linea-dato w-80 truncate uppercase">{{
+                                        anexoneuro.datos.estudios_solicitados if
+                                        anexoneuro and anexoneuro. datos
+                                        else ''
+                                        }}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-end gap-x-3">
+                                <div class="flex items-end">
+                                    <span class="whitespace-nowrap mr-1">TRATAMIENTO Y PRONÓSTICO:</span>
+                                    <span id="tratamiento_pronostico_val" class="linea-dato w-80 truncate uppercase">{{
+                                        anexoneuro.datos.tratamiento_pronostico if
+                                        anexoneuro and anexoneuro.datos
+                                        else ''
+                                        }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <script>
+                        let currentStep = 1;
+                        const totalSteps = 5;
+
+                        function changeStep(dir) {
+                            // Calculamos el paso al que queremos ir
+                            let nextStep = currentStep + dir;
+
+                            // Verificamos que el paso exista (entre 1 y 3)
+                            if (nextStep >= 1 && nextStep <= totalSteps) {
+
+                                // 1. Ocultar el paso actual
+                                const currentEl = document.getElementById(`q-step-${currentStep}`);
+                                if (currentEl) currentEl.classList.remove('active');
+
+                                // 2. Actualizar la variable global
+                                currentStep = nextStep;
+
+                                // 3. Mostrar el nuevo paso
+                                const nextEl = document.getElementById(`q-step-${currentStep}`);
+                                if (nextEl) nextEl.classList.add('active');
+
+                                // 4. Hacer scroll hacia arriba del asistente para no perderse
+                                const scrollContainer = document.querySelector('.overflow-y-auto');
+                                if (scrollContainer) scrollContainer.scrollTop = 0;
+                            }
+                        }
+
+                        function guardarAnexoNeurologia() {
+                            console.log("Iniciando guardado de Neurología...");
+
+                            const curpElement = document.getElementById('paciente_curp_doc');
+                            if (!curpElement) {
+                                alert("Error: No se encontró la CURP del paciente.");
+                                return;
+                            }
+                            const curpPaciente = curpElement.innerText.trim();
+
+                            // 2. RECOLECCIÓN DE VALORES (Asegúrate de que los IDs existan en tu HTML)
+                            const datosNeurologia = {
+                                curp: curpPaciente,
+                                valores: {
+                                    nivel_conciencia: document.getElementById('nivel_conciencia_val')?.innerText || "",
+                                    escala_glasgowo: document.getElementById('escala_glasgowo_val')?.innerText || "",
+                                    escala_gasgowver: document.getElementById('escala_gasgowver_val')?.innerText || "",
+                                    escala_gasgowmot: document.getElementById('escala_gasgowmot_val')?.innerText || "",
+                                    total_eg: document.getElementById('total_eg_val')?.innerText || "",
+                                    orientacion_tiempo: document.getElementById('orientacion_tiempo_val')?.innerText || "",
+                                    orientacion_espacio: document.getElementById('orientacion_espacio_val')?.innerText || "",
+                                    orientacion_persona: document.getElementById('orientacion_persona_val')?.innerText || "",
+                                    atencion_concentracion: document.getElementById('atencion_concentracion_val')?.innerText || "",
+                                    memoria_corto_plazo: document.getElementById('memoria_corto_plazo_val')?.innerText || "",
+                                    memoria_largo_plazo: document.getElementById('memoria_largo_plazo_val')?.innerText || "",
+                                    lenguaje_fluidez: document.getElementById('lenguaje_fluidez_val')?.innerText || "",
+                                    lenguaje_comprension: document.getElementById('lenguaje_comprension_val')?.innerText || "",
+                                    lenguaje_nominacion: document.getElementById('lenguaje_nominacion_val')?.innerText || "",
+                                    calculo_juicio: document.getElementById('calculo_juicio_val')?.innerText || "",
+
+                                    olfatorio: document.getElementById('olfatorio_val')?.innerText || "",
+                                    optico_agudeza: document.getElementById('optico_agudeza_val')?.innerText || "",
+                                    optico_campos: document.getElementById('optico_campos_val')?.innerText || "",
+                                    motricidad_ocular: document.getElementById('motricidad_ocular_val')?.innerText || "",
+                                    trigemino_sensativo: document.getElementById('trigemino_sensativo_val')?.innerText || "",
+                                    trigemino_motriz: document.getElementById('trigemino_motriz_val')?.innerText || "",
+                                    facial_simetria: document.getElementById('facial_simetria_val')?.innerText || "",
+                                    vestibulococlear: document.getElementById('vestibulococlear_val')?.innerText || "",
+                                    vago_glosofaringeo: document.getElementById('vago_glosofaringeo_val')?.innerText || "",
+                                    accesorio: document.getElementById('accesorio_val')?.innerText || "",
+                                    hipogloso: document.getElementById('hipogloso_val')?.innerText || "",
+                                    fondo_ojo: document.getElementById('fondo_ojo_val')?.innerText || "",
+
+                                    trofismon: document.getElementById('trofismon_val')?.innerText || "",
+                                    trofismo_h: document.getElementById('trofismo_h_val')?.innerText || "",
+                                    trofismo_a: document.getElementById('trofismo_a_val')?.innerText || "",
+                                    tono_normal: document.getElementById('tono_normal_val')?.innerText || "",
+                                    tono_espasticidad: document.getElementById('tono_espasticidad_val')?.innerText || "",
+                                    tono_rigidez: document.getElementById('tono_rigidez_val')?.innerText || "",
+                                    ms_derecho_proximal: document.getElementById('ms_derecho_proximal_val')?.innerText || "",
+                                    ms_derecho_distal: document.getElementById('ms_derecho_distal_val')?.innerText || "",
+                                    ms_izquierdo_proximal: document.getElementById('ms_izquierdo_proximal_val')?.innerText || "",
+                                    ms_izquierdo_distal: document.getElementById('ms_izquierdo_distal_val')?.innerText || "",
+                                    bicipital: document.getElementById('bicipital_val')?.innerText || "",
+                                    tricipital: document.getElementById('tricipital_val')?.innerText || "",
+                                    estiloradial: document.getElementById('estiloradial_val')?.innerText || "",
+                                    rotuliano: document.getElementById('rotuliano_val')?.innerText || "",
+                                    aquileo: document.getElementById('aquileo_val')?.innerText || "",
+                                    babinski: document.getElementById('babinski_val')?.innerText || "",
+                                    hoffmann: document.getElementById('hoffmann_val')?.innerText || "",
+                                    otros_rp: document.getElementById('otros_rp_val')?.innerText || "",
+
+                                    sensibilidad_tacto: document.getElementById('sensibilidad_tacto_val')?.innerText || "",
+                                    sensibilidad_dolor: document.getElementById('sensibilidad_dolor_val')?.innerText || "",
+                                    sensibilidad_temperatura: document.getElementById('sensibilidad_temperatura_val')?.innerText || "",
+                                    sensibilidad_propiocepcion: document.getElementById('sensibilidad_propiocepcion_val')?.innerText || "",
+                                    sensibilidad_vibracion: document.getElementById('sensibilidad_vibracion_val')?.innerText || "",
+                                    coordinacion_dedo_nariz: document.getElementById('coordinacion_dedo_nariz_val')?.innerText || "",
+                                    coordinacion_talon_rodilla: document.getElementById('coordinacion_talon_rodilla_val')?.innerText || "",
+                                    coordinacion_diadococinesia: document.getElementById('coordinacion_diadococinesia_val')?.innerText || "",
+                                    romberg: document.getElementById('romberg_val')?.innerText || "",
+                                    marcha_libre: document.getElementById('marcha_libre_val')?.innerText || "",
+                                    marcha_ataxia: document.getElementById('marcha_ataxia_val')?.innerText || "",
+                                    marcha_espastica: document.getElementById('marcha_espastica_val')?.innerText || "",
+                                    marcha_hemiparetica: document.getElementById('marcha_hemiparetica_val')?.innerText || "",
+                                    marcha_parkinsoniana: document.getElementById('marcha_parkinsoniana_val')?.innerText || "",
+                                    mov_anormal_temblor: document.getElementById('marcha_anormal_temblor_val')?.innerText || "",
+                                    mov_anormal_coreicos: document.getElementById('marcha_anormal_coreicos_val')?.innerText || "",
+                                    mov_anormal_distonias: document.getElementById('marcha_anormal_distonias_val')?.innerText || "",
+                                    mov_anormal_otros: document.getElementById('marcha_anormal_otros_val')?.innerText || "",
+                                    sindrome_etiologico: document.getElementById('sindrome_etiologico_val')?.innerText || "",
+                                    sindrome_topografico: document.getElementById('sindrome_topografico_val')?.innerText || "",
+                                    sindrome_nosologico: document.getElementById('sindrome_nosologico_val')?.innerText || "",
+                                    estudios_solicitados: document.getElementById('estudios_solicitados_val')?.innerText || "",
+                                    tratamiento_pronostico: document.getElementById('tratamiento_pronostico_val')?.innerText || ""
+                                }
+                            };
+                            fetch('/guardar_anexo_neurologia', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(datosNeurologia) // Asegúrate de que este objeto tenga 'curp' y 'valores'
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.status === "success") {
+                                        alert("Anexo guardado correctamente.");
+                                        window.location.href = `/paciente/${curpPaciente}/anexos`;
+                                    } else {
+                                        alert("Error al guardar: " + data.message);
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    alert("Hubo un fallo al contactar con el servidor.");
+                                });
+                        }
+                        function updateDoc(id, value) {
+                            const el = document.getElementById(id);
+                            if (el) {
+                                // Si el valor está vacío, ponemos una línea para que no desaparezca el campo
+                                el.innerText = value.toUpperCase() || "____________________";
+                            }
+                        }
+                    </script>
+</body>
+
+</html>
