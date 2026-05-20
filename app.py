@@ -6,20 +6,22 @@ from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from bson.objectid import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
+from bson.objectid import ObjectId
+import json
 
 app = Flask(__name__)
-
-# CIBERSEGURIDAD: Ocultamos la clave secreta en una variable de entorno
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "una-clave-por-defecto-segura")
 
+# Configuración para subir archivos (firmas y documentos)
 UPLOAD_FOLDER = 'static/firmas'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+# Asegúrate de crear esta carpeta en tu proyecto para guardar las firmas
 UPLOAD_DOCS_FOLDER = 'static/expedientes'
 app.config['UPLOAD_DOCS_FOLDER'] = UPLOAD_DOCS_FOLDER
 os.makedirs(UPLOAD_DOCS_FOLDER, exist_ok=True)
 
-# CIBERSEGURIDAD: Conexión flexible. Si no encuentra la variable 'MONGO_URL', usa None o una local.
+#Conexión a MongoDB
 MONGO_URI = os.getenv("MONGO_URL")
 if not MONGO_URI:
     # Dejamos una cadena local vacía o de respaldo por si corres en tu PC
@@ -28,7 +30,61 @@ if not MONGO_URI:
 client = MongoClient(MONGO_URI)
 db = client['expediente_salud']
 
-# --- RUTAS DE NAVEGACIÓN ---
+# ___________________Rutas de Inicio de Sesión y Registro________________________
+
+@app.route('/registro', methods=['GET', 'POST'])
+def registro_page():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password_plano = request.form.get('password')
+        nombre = request.form.get('nombre')
+        
+        # Cifrado de la contraseña usando werkzeug.security para mayor seguridad
+        password_cifrado = generate_password_hash(password_plano)
+        
+        # Validación de campos vacíos
+        nuevo_usuario = {
+            "username": username,
+            "password": password_cifrado, 
+            "nombre": nombre,
+            "rol": "medico"
+        }
+        db.usuarios.insert_one(nuevo_usuario)
+        return redirect(url_for('login_page'))
+        
+    return render_template('registro.html')
+
+@app.route('/auth/register', methods=['POST'])
+def register_action():
+    usuario = request.form.get('usuario')
+    email = request.form.get('email')
+    cedula = request.form.get('cedula')
+    password_plano = request.form.get('password') 
+
+
+    # Validación de duplicados: Verificamos si ya existe un usuario con el mismo nombre o cédula
+    if db.usuarios.find_one({"$or": [{"username": usuario}, {"cedula": cedula}]}):
+        flash('El usuario o la cédula ya están registrados', 'warning')
+        return redirect(url_for('registro_page'))
+
+    # Validación de campos vacíos
+    if not all([usuario, email, cedula, password_plano]):
+        flash('Por favor, completa todos los campos', 'warning')
+        return redirect(url_for('registro_page'))
+
+    #Ciframos la contraseña antes de guardarla en la base de datos
+    password_cifrado = generate_password_hash(password_plano)
+
+    db.usuarios.insert_one({
+        "username": usuario, 
+        "email": email,
+        "cedula": cedula,
+        "password": password_cifrado
+    })
+    flash('¡Médico registrado con éxito!', 'success')
+    return redirect(url_for('dashboard'))
+
+
 @app.route('/', methods=['GET', 'POST'])
 def login_page():
     if request.method == 'POST':
@@ -38,36 +94,33 @@ def login_page():
         # Buscamos al usuario solo por su username
         usuario = db.usuarios.find_one({"username": username})
         
-        # CIBERSEGURIDAD: Comparamos el password escrito con el hash de la BD
+        # Comparamos el password escrito con el hash de la BD
         if usuario and check_password_hash(usuario['password'], password_plano):
             session['usuario_id'] = str(usuario['_id'])
             return redirect(url_for('dashboard'))
         else:
-            # Si falla, vuelve a cargar el login (puedes pasarle un mensaje de error si quieres)
             return render_template('login.html', error="Usuario o contraseña incorrectos")
             
     return render_template('login.html')
 
-@app.route('/registro', methods=['GET', 'POST'])
-def registro_page():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password_plano = request.form.get('password')
-        nombre = request.form.get('nombre')
-        
-        # CIBERSEGURIDAD: Ciframos la contraseña antes de guardarla en Mongo
-        password_cifrado = generate_password_hash(password_plano)
-        
-        nuevo_usuario = {
-            "username": username,
-            "password": password_cifrado,  # Guardamos el hash seguro
-            "nombre": nombre,
-            "rol": "medico"
-        }
-        db.usuarios.insert_one(nuevo_usuario)
+@app.route('/auth/login', methods=['POST'])
+def login_action():
+    usuario_ingresado = request.form.get('usuario')
+    password_ingresado = request.form.get('password')
+    
+    # Buscamos al usuario únicamente por su nombre de usuario
+    user = db.usuarios.find_one({"username": usuario_ingresado})
+    
+    # Validamos la contraseña usando la función de hash
+    if user and check_password_hash(user['password'], password_ingresado):
+        # GUARDAMOS EL ID en la sesión como 'usuario_id'
+        session['usuario_id'] = str(user['_id']) 
+        return redirect(url_for('dashboard'))
+    else:
+        flash('Contraseña o usuario incorrectos', 'danger') 
         return redirect(url_for('login_page'))
-        
-    return render_template('registro.html')
+
+#_____________________Rutas de Dashboard________________________
 
 @app.route('/dashboard')
 def dashboard():
@@ -75,16 +128,17 @@ def dashboard():
     if not u_id:
         return redirect(url_for('login_page'))
     
+    # Buscamos al médico logueado para mostrar su nombre en el dashboard y evitar errores en la barra superior
     medico_object_id = ObjectId(u_id)
     medico_data = db.usuarios.find_one({"_id": medico_object_id})
     
-    # 1. Obtener las citas pendientes de este doctor desde MongoDB
+    # Obtener las citas pendientes de este doctor desde MongoDB
     citas_cursor = db.citas.find({"doctor_id": medico_object_id, "estado": "Pendiente"})
     lista_citas = list(citas_cursor)
     
-    # 2. EL CRUCE CLAVE: Buscar el nombre real de cada paciente usando su CURP
+    # Buscar el nombre real de cada paciente usando su CURP
     for cita in lista_citas:
-        curp = cita.get('curp_paciente') or cita.get('curp') # Soporta ambos nombres por si acaso
+        curp = cita.get('curp_paciente') or cita.get('curp')
         
         if curp:
             # Buscamos al paciente en la base de datos
@@ -97,9 +151,7 @@ def dashboard():
         else:
             cita['nombre_final'] = "Paciente No Identificado"
             
-    # ====================================================================
-    # 3. CONSULTA CORREGIDA: Filtra si el ID está en la lista O en el campo antiguo
-    # ====================================================================
+    # filtramos los pacientes que pertenecen a este médico específico usando $or para compatibilidad con ambos formatos
     query_pacientes = {
         "$or": [
             {"medicos_ids": medico_object_id},  # Nuevo formato (Arreglo de médicos)
@@ -108,17 +160,13 @@ def dashboard():
     }
     pacientes_filtrados = list(db.pacientes.find(query_pacientes))
     
-    # ====================================================================
-    # NUEVO: CÁLCULO DE INDICADORES SIN ALTERAR TU LÓGICA EXISTENTE
-    # ====================================================================
+    # Indicadores clave para el dashboard
     fecha_hoy = datetime.now().strftime("%Y-%m-%d")
     
     # Total de Pacientes pertenecientes a este médico específico
     total_pacientes = len(pacientes_filtrados)
     
-    # Consultas registradas el día de hoy en el sistema global
-    # Nota: Si tu formulario de consultas guarda en formato "dd/mm/yyyy", puedes dejar un find alterno. 
-    # Lo ideal es estandarizar a fecha_hoy (YYYY-MM-DD).
+    # Consultas registradas el día de hoy en el sistema global (YYYY-MM-DD)
     consultas_hoy = db.consultas.count_documents({"fecha": fecha_hoy})
     
     # Conteo dinámico de documentos adjuntos de los pacientes asignados a este doctor
@@ -127,16 +175,14 @@ def dashboard():
         if 'documentos' in p and isinstance(p['documentos'], list):
             documentos_totales += len(p['documentos'])
             
-    # CORREGIDO: Citas programadas para HOY, filtrando por el MÉDICO actual y estado "Pendiente"
+    #Citas programadas para HOY, filtrando por el MÉDICO actual y estado "Pendiente"
     citas_hoy = db.citas.count_documents({
         "doctor_id": medico_object_id,
         "fecha": fecha_hoy,
         "estado": "Pendiente"
     })
-    # ====================================================================
             
-    # 4. Pasar las variables procesadas a tu index.html
-    # Enviamos tanto 'pacientes' como 'pacientes_completos' e incluimos los indicadores que tu HTML requiere
+    # Pasar las variables procesadas a tu index.html
     return render_template(
         'index.html', 
         citas=lista_citas, 
@@ -149,45 +195,7 @@ def dashboard():
         citas_hoy=citas_hoy
     )
 
-@app.route('/auth/register', methods=['POST'])
-def register_action():
-    usuario = request.form.get('usuario')
-    email = request.form.get('email')
-    cedula = request.form.get('cedula')
-    password_plano = request.form.get('password') 
-    
-    if db.usuarios.find_one({"$or": [{"username": usuario}, {"cedula": cedula}]}):
-        flash('El usuario o la cédula ya están registrados', 'warning')
-        return redirect(url_for('registro_page'))
-
-    # CIBERSEGURIDAD: Ciframos la contraseña antes de guardarla en Mongo
-    password_cifrado = generate_password_hash(password_plano)
-
-    db.usuarios.insert_one({
-        "username": usuario, 
-        "email": email,
-        "cedula": cedula,
-        "password": password_cifrado # <--- ¡Ahora sí viaja ultra seguro!
-    })
-    flash('¡Médico registrado con éxito!', 'success')
-    return redirect(url_for('dashboard'))
-
-@app.route('/auth/login', methods=['POST'])
-def login_action():
-    usuario_ingresado = request.form.get('usuario')
-    password_ingresado = request.form.get('password')
-    
-    # 1. Buscamos al usuario únicamente por su nombre de usuario
-    user = db.usuarios.find_one({"username": usuario_ingresado})
-    
-    # 2. CIBERSEGURIDAD: Validamos la contraseña usando la función de hash
-    if user and check_password_hash(user['password'], password_ingresado):
-        # GUARDAMOS EL ID en la sesión como 'usuario_id'
-        session['usuario_id'] = str(user['_id']) 
-        return redirect(url_for('dashboard'))
-    else:
-        flash('Contraseña o usuario incorrectos', 'danger') 
-        return redirect(url_for('login_page'))
+#___________________________Perfil Médico__________________________________
 
 @app.route('/perfil-medico')
 def perfil():
@@ -198,7 +206,6 @@ def perfil():
         print("DEBUG: No se encontró usuario_id en sesión, redirigiendo al login.")
         return redirect(url_for('login_page'))
 
-    from bson.objectid import ObjectId
     try:
         # Buscamos en la base de datos por el _id único
         doctor_data = db.usuarios.find_one({"_id": ObjectId(u_id)})
@@ -237,7 +244,7 @@ def actualizar_perfil():
         "consultorio_direccion": direccion
     }
     
-    # 2. PROCESAR LA FOTO DE PERFIL (¡Añade este bloque!)
+    # Procesar el archivo de la Foto de Perfil
     if 'foto' in request.files:
         foto_file = request.files['foto']
         if foto_file and foto_file.filename != '':
@@ -246,7 +253,7 @@ def actualizar_perfil():
             foto_file.save(foto_filepath)
             update_data["foto_url"] = f"/{foto_filepath}"
 
-    # 3. Procesar el archivo de la Firma
+    # Procesar el archivo de la Firma
     if 'firma' in request.files:
         file = request.files['firma']
         if file and file.filename != '':
@@ -255,14 +262,14 @@ def actualizar_perfil():
             file.save(filepath)
             update_data["firma_url"] = f"/{filepath}"
 
-    # 4. Guardar en MongoDB
+    # Guardar en MongoDB
     db.usuarios.update_one(
         {"_id": ObjectId(u_id)},
         {"$set": update_data}
     )
     return redirect(url_for('perfil'))
 
-# --- LÓGICA DE PACIENTES Y EXPEDIENTE ---
+#_________________________________________Pacientes_________________________________________
 @app.route('/add_patient', methods=['POST'])
 def add_patient():
     # 1. Validar sesión del doctor y obtener su ID
@@ -270,9 +277,7 @@ def add_patient():
     if not u_id:
         return redirect(url_for('login_page'))
 
-    # ====================================================================
-    # FLUJO A: VINCULAR PACIENTE EXISTENTE POR CURP (DESDE LA BARRA DE IMPORTACIÓN)
-    # ====================================================================
+    # Vincular paciente existente por CURP (si se llenó ese campo)
     curp_buscar = request.form.get('curp_buscar')
     if curp_buscar:
         curp_buscar = curp_buscar.upper().strip()
@@ -281,10 +286,10 @@ def add_patient():
         paciente_existente = db.pacientes.find_one({"curp": curp_buscar})
         
         if paciente_existente:
-            # CORRECCIÓN CLAVE: Usamos $addToSet en lugar de $set para agregarlo a una lista de médicos
+            #$addToSet en lugar de $set para agregarlo a una lista de médicos
             db.pacientes.update_one(
                 {"curp": curp_buscar},
-                {"$addToSet": {"medicos_ids": ObjectId(u_id)}} # Guardamos en plural como lista
+                {"$addToSet": {"medicos_ids": ObjectId(u_id)}}
             )
             flash('Paciente vinculado exitosamente a tu directorio', 'success')
         else:
@@ -292,9 +297,7 @@ def add_patient():
             
         return redirect(url_for('lista_pacientes'))
 
-    # ====================================================================
-    # FLUJO B: REGISTRAR UN PACIENTE NUEVO DESDE CERO (DESDE EL FORMULARIO ORIGINAL)
-    # ====================================================================
+    #Registro de nuevo paciente (si no se llenó el campo de búsqueda por CURP)
     # Recogemos los datos limpios desde el formulario de manera segura
     nombre = request.form.get('nombre', '').upper().strip()
     curp = request.form.get('curp', '').upper().strip()
@@ -334,6 +337,72 @@ def add_patient():
     flash('Paciente registrado y añadido con éxito', 'success')
     return redirect(url_for('dashboard'))
 
+@app.route('/perfil_paciente/<curp>')
+@app.route('/paciente/<curp>')   
+@app.route('/perfil/<curp>')
+def perfil_paciente(curp):
+    u_id = session.get('usuario_id')
+    if not u_id:
+        return redirect(url_for('login_page'))
+    
+    medico_object_id = ObjectId(u_id)
+    medico_data = db.usuarios.find_one({"_id": medico_object_id})
+
+    # 1. Buscar los datos del paciente
+    paciente = db.pacientes.find_one({"curp": curp})
+    if not paciente:
+        flash("Paciente no encontrado", "danger")
+        return redirect(url_for('pacientes'))
+    
+    # 2. Buscar las consultas del paciente (por si ya lo tenías)
+    consultas = list(db.consultas.find({"curp_paciente": curp}))
+
+    
+    
+    # 3. NUEVO: Buscar los archivos/estudios subidos de este paciente
+    archivos = list(db.expedientes_archivos.find({"curp_paciente": curp}))
+    
+    # Pasamos 'archivos' al render_template
+    return render_template('perfil_paciente.html', 
+                           paciente=paciente, 
+                           consultas=consultas, 
+                           archivos=archivos,
+                           doctor=medico_data)
+
+@app.route('/buscar_paciente')
+def buscar_paciente():
+    u_id = session.get('usuario_id')
+    if not u_id:
+        return jsonify([]), 401 # No autorizado si no hay sesión
+
+    query = request.args.get('q', '').strip()
+    if len(query) < 2:
+        return jsonify([]) # No buscar si es un solo caracter
+
+    # Buscamos coincidencias en Nombre, CURP o NSS (ajusta los campos según tu esquema de 'pacientes')
+    # Usamos $regex para búsquedas parciales tipo "LIKE"
+    criterio = {
+        "$or": [
+            {"nombre": {"$regex": query, "$options": "i"}},
+            {"curp": {"$regex": query, "$options": "i"}},
+            {"nss": {"$regex": query, "$options": "i"}}
+        ]
+    }
+
+    # Traemos un límite de 5 o 6 registros para no saturar el menú desplegable
+    pacientes_db = db.pacientes.find(criterio).limit(6)
+
+    resultados = []
+    for p in pacientes_db:
+        resultados.append({
+            "nombre": p.get("nombre", "Sin Nombre"),
+            "curp": p.get("curp", ""),
+            "nss": p.get("nss", "N/A")
+        })
+
+    # Retornamos la lista en formato JSON para que el JS del HTML la procese
+    return jsonify(resultados)
+
 @app.route('/pacientes')
 def lista_pacientes():
     u_id = session.get('usuario_id')
@@ -355,6 +424,113 @@ def lista_pacientes():
     
     # Renderizamos la plantilla pasando la lista correcta hacia pacientes.html
     return render_template('pacientes.html', pacientes_completos=pacientes_filtrados,doctor=medico_data)
+
+@app.route('/search_patient', methods=['GET'])
+def search_patient():
+    query = request.args.get('query')
+    if not query:
+        return redirect(url_for('dashboard'))
+    query = query.upper()
+    paciente = db.pacientes.find_one({"curp": query})
+    if paciente:
+        return render_template('expediente.html', paciente=paciente)
+    flash('No se encontró ningún paciente con esa CURP', 'warning')
+    return redirect(url_for('dashboard'))
+
+@app.route('/api/sugerencias_pacientes')
+def sugerencias_pacientes():
+    # Validamos que el usuario esté logueado antes de procesar la búsqueda
+    query = request.args.get('q', '')
+    if len(query) < 2:  # No buscar hasta que escriba al menos 2 letras
+        return jsonify([])
+
+    # Buscamos coincidencias en nombre o CURP
+    pacientes = db.pacientes.find({
+        "$or": [
+            {"nombre": {"$regex": query, "$options": "i"}},
+            {"curp": {"$regex": query, "$options": "i"}}
+        ]
+    }).limit(5) # Solo mostramos las primeras 5 sugerencias
+
+    resultados = []
+    for p in pacientes:
+        resultados.append({
+            "nombre": p.get('nombre', 'Sin Nombre'),
+            "curp": p.get('curp', 'Sin CURP'),
+            "nss": p.get('nss', 'N/A')  # Se añade por si la agenda lo requiere al renderizar la sugerencia
+        })
+    
+    return jsonify(resultados)
+
+
+#________________________________Agenda_______________________________________________
+
+@app.route('/agendar_cita', methods=['POST'])
+def agendar_cita():
+    u_id = session.get('usuario_id')
+    if not u_id:
+        return redirect(url_for('login_page'))
+
+    # Capturar los datos enviados por el formulario inline
+    curp = request.form.get('curp')
+    fecha = request.form.get('fecha') # Viene en formato YYYY-MM-DD por el input tipo date
+    hora = request.form.get('hora')   # Viene en formato HH:MM por el input tipo time
+    motivo = request.form.get('motivo')
+
+    # Validación rápida de que los campos obligatorios no vengan vacíos
+    if not curp or not fecha or not hora or not motivo:
+        # Puedes usar flash si manejas mensajes en el HTML o solo redirigir
+        return redirect(url_for('agenda_page'))
+
+    # Construir el documento para la colección 'citas'
+    nueva_cita = {
+        "doctor_id": ObjectId(u_id),
+        "curp_paciente": curp,         # Guardamos la CURP vinculada
+        "fecha": fecha,
+        "hora": hora,
+        "motivo": motivo,
+        "estado": "Pendiente"          # Estado inicial obligatorio para que lo lea tu ruta de /agenda
+    }
+
+    # Insertar en MongoDB
+    db.citas.insert_one(nueva_cita)
+
+    # Redirigir de vuelta a la agenda para que se refresque y aparezca la nueva cita
+    return redirect(url_for('agenda_page'))
+
+@app.route('/agenda')
+def agenda_page():
+    # Validar de inmediato que la sesión esté activa
+    u_id = session.get('usuario_id')
+    if not u_id:
+        return redirect(url_for('login_page')) # Si no hay sesión, al Login
+    
+    # Buscar al doctor logueado para que la barra superior no marque error
+    doctor_data = db.usuarios.find_one({"_id": ObjectId(u_id)})
+    
+    # filtamos solo las citas pendientes de ese doctor
+    citas = list(db.citas.find({
+        "doctor_id": ObjectId(u_id), 
+        "estado": "Pendiente"
+    }).sort([("fecha", 1), ("hora", 1)]))
+    
+    #CONTADOR FILTRADO: Contar cuántas citas tiene HOY este doctor específicamente
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    citas_hoy = db.citas.count_documents({
+        "doctor_id": ObjectId(u_id),
+        "fecha": hoy, 
+        "estado": "Pendiente"
+    })
+    
+    #Enviamos todo limpio al HTML
+    return render_template(
+        'agenda.html', 
+        citas=citas, 
+        citas_hoy=citas_hoy, 
+        doctor=doctor_data
+    )
+
+#______________________________________Consultas________________________________________
 
 @app.route('/consultas')
 def consultas():
@@ -413,85 +589,6 @@ def consultas():
                            labels_x=labels_x,
                            datos_y=datos_y)
 
-@app.route('/perfil_paciente/<curp>')
-@app.route('/paciente/<curp>')   # <--- AGREGA ESTA LÍNEA
-@app.route('/perfil/<curp>')
-def perfil_paciente(curp):
-    u_id = session.get('usuario_id')
-    if not u_id:
-        return redirect(url_for('login_page'))
-    
-    medico_object_id = ObjectId(u_id)
-    medico_data = db.usuarios.find_one({"_id": medico_object_id})
-
-    # 1. Buscar los datos del paciente
-    paciente = db.pacientes.find_one({"curp": curp})
-    if not paciente:
-        flash("Paciente no encontrado", "danger")
-        return redirect(url_for('pacientes'))
-    
-    # 2. Buscar las consultas del paciente (por si ya lo tenías)
-    consultas = list(db.consultas.find({"curp_paciente": curp}))
-
-    
-    
-    # 3. NUEVO: Buscar los archivos/estudios subidos de este paciente
-    archivos = list(db.expedientes_archivos.find({"curp_paciente": curp}))
-    
-    # Pasamos 'archivos' al render_template
-    return render_template('perfil_paciente.html', 
-                           paciente=paciente, 
-                           consultas=consultas, 
-                           archivos=archivos,
-                           doctor=medico_data)
-@app.route('/subir_archivo_paciente/<curp>', methods=['POST'])
-def subir_archivo_paciente(curp):
-    if 'estudio_medico' not in request.files:
-        flash("No se seleccionó ningún archivo", "danger")
-        return redirect(url_for('perfil_paciente', curp=curp))
-        
-    file = request.files['estudio_medico']
-    if file.filename == '':
-        flash("Archivo vacío", "danger")
-        return redirect(url_for('perfil_paciente', curp=curp))
-        
-    if file:
-        # Renombrar el archivo de forma segura incluyendo la CURP del paciente y la fecha
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = secure_filename(f"{curp}_{timestamp}_{file.filename}")
-        filepath = os.path.join(app.config['UPLOAD_DOCS_FOLDER'], filename)
-        file.save(filepath)
-        
-        # Registrar el documento en MongoDB en una lista o colección dedicada
-        nuevo_documento = {
-            "curp_paciente": curp,
-            "nombre_archivo": file.filename,
-            "ruta_archivo": f"/{filepath}",
-            "fecha_subida": datetime.now().strftime("%d/%m/%Y - %H:%M")
-        }
-        
-        # Insertamos en una nueva colección del expediente
-        db.expedientes_archivos.insert_one(nuevo_documento)
-        
-    return redirect(url_for('perfil_paciente', curp=curp))
-
-@app.route('/expediente_paciente/<curp>')
-def expediente_paciente(curp):
-    u_id = session.get('usuario_id')
-    if not u_id:
-        return redirect(url_for('login_page'))
-    
-    # 1. Obtener datos del paciente
-    paciente = db.pacientes.find_one({"curp": curp})
-    if not paciente:
-        flash("Paciente no encontrado", "danger")
-        return redirect(url_for('pacientes'))
-        
-    # 2. Obtener la lista de archivos de este paciente
-    archivos = list(db.expedientes_archivos.find({"curp_paciente": curp}))
-    
-    return render_template('expediente_archivos.html', paciente=paciente, archivos=archivos)
-
 @app.route('/perfil/<curp>/consultas')
 def ver_consultas(curp):
     # Buscamos al paciente por su CURP
@@ -514,111 +611,71 @@ def detalle_consulta(id):
     # Reutilizamos tu template de receta para mostrar el detalle
     return render_template('receta.html', consulta=consulta, paciente=paciente)
 
-from flask import request, flash # Asegúrate de tener importado 'request' y opcionalmente 'flash'
+@app.route('/guardar_consulta/<curp>', methods=['POST'])
+def guardar_consulta(curp):
+    ahora = datetime.now()
+    
+    # Recogemos TODOS los datos del nuevo formulario
+    nueva_nota = {
+        "curp_paciente": curp,
+        "fecha": ahora.strftime("%d/%m/%Y"),
+        "hora": ahora.strftime("%H:%M"),
+        "peso": request.form.get('peso'),
+        "talla": request.form.get('talla'),
+        "temp": request.form.get('temp'),
+        "presion": request.form.get('presion'),
+        "motivo": request.form.get('motivo'),
+        "diagnostico": request.form.get('diagnostico'),
+        "pronostico": request.form.get('pronostico'),
+        "tratamiento": request.form.get('tratamiento')
+    }
+    
+    # 1. Guardamos la consulta en la colección de consultas
+    db.consultas.insert_one(nueva_nota)
+    
+    # Usamos el formato para que tu tabla del Dashboard se vea con hora
+    fecha_tabla = ahora.strftime("%d %b %Y - %H:%M")
+    db.pacientes.update_one(
+        {"curp": curp}, 
+        {"$set": {"ultima_visita": fecha_tabla}}
+    )
+    
+    # 3. Jalamos los datos del paciente para la receta
+    paciente_data = db.pacientes.find_one({"curp": curp})
+    
 
-@app.route('/agendar_cita', methods=['POST'])
-def agendar_cita():
+    # Pero aquí devolvemos 'receta.html' porque ya terminó la consulta
+    return render_template('receta.html', consulta=nueva_nota, paciente=paciente_data)
+
+@app.route('/preparar_consulta', methods=['POST'])
+def preparar_consulta():
+    curp = request.form.get('curp').upper()
+    paciente = db.pacientes.find_one({"curp": curp})
+    if paciente:
+        return render_template('nuevaconsulta.html', paciente=paciente)
+    else:
+        flash('El paciente no está registrado.', 'danger')
+        return redirect(url_for('dashboard'))
+
+
+#__________________________________________Expediente__________________________________________
+
+@app.route('/expediente_paciente/<curp>')
+def expediente_paciente(curp):
     u_id = session.get('usuario_id')
     if not u_id:
         return redirect(url_for('login_page'))
-
-    # 1. Capturar los datos enviados por el formulario inline
-    curp = request.form.get('curp')
-    fecha = request.form.get('fecha') # Viene en formato YYYY-MM-DD por el input tipo date
-    hora = request.form.get('hora')   # Viene en formato HH:MM por el input tipo time
-    motivo = request.form.get('motivo')
-
-    # Validación rápida de que los campos obligatorios no vengan vacíos
-    if not curp or not fecha or not hora or not motivo:
-        # Puedes usar flash si manejas mensajes en el HTML o solo redirigir
-        return redirect(url_for('agenda_page'))
-
-    # 2. Construir el documento para la colección 'citas'
-    nueva_cita = {
-        "doctor_id": ObjectId(u_id),
-        "curp_paciente": curp,         # Guardamos la CURP vinculada
-        "fecha": fecha,
-        "hora": hora,
-        "motivo": motivo,
-        "estado": "Pendiente"          # Estado inicial obligatorio para que lo lea tu ruta de /agenda
-    }
-
-    # 3. Insertar en MongoDB
-    db.citas.insert_one(nueva_cita)
-
-    # 4. Redirigir de vuelta a la agenda para que se refresque y aparezca la nueva cita
-    return redirect(url_for('agenda_page'))
-
-@app.route('/agenda')
-def agenda_page():
-    # 1. Validar de inmediato que la sesión esté activa
-    u_id = session.get('usuario_id')
-    if not u_id:
-        return redirect(url_for('login_page')) # Si no hay sesión, al Login
     
-    # 2. Buscar al doctor logueado para que la barra superior no marque error
-    doctor_data = db.usuarios.find_one({"_id": ObjectId(u_id)})
+    # 1. Obtener datos del paciente
+    paciente = db.pacientes.find_one({"curp": curp})
+    if not paciente:
+        flash("Paciente no encontrado", "danger")
+        return redirect(url_for('pacientes'))
+        
+    # 2. Obtener la lista de archivos de este paciente
+    archivos = list(db.expedientes_archivos.find({"curp_paciente": curp}))
     
-    # 3. FILTRAR CITAS POR DOCTOR: Traemos solo las citas pendientes de ESTE doctor
-    # Nota: Asegúrate de si tu colección real se llama 'agenda' o 'citas'. 
-    # Según tu HTML 'agenda.html', el bucle lee la variable 'citas' para pintar el calendario.
-    citas = list(db.citas.find({
-        "doctor_id": ObjectId(u_id), 
-        "estado": "Pendiente"
-    }).sort([("fecha", 1), ("hora", 1)]))
-    
-    # 4. CONTADOR FILTRADO: Contar cuántas citas tiene HOY este doctor específicamente
-    hoy = datetime.now().strftime("%Y-%m-%d")
-    citas_hoy = db.citas.count_documents({
-        "doctor_id": ObjectId(u_id),
-        "fecha": hoy, 
-        "estado": "Pendiente"
-    })
-    
-    # 5. Enviamos todo limpio al HTML
-    return render_template(
-        'agenda.html', 
-        citas=citas, 
-        citas_hoy=citas_hoy, 
-        doctor=doctor_data
-    )
-
-import json
-from flask import jsonify
-
-@app.route('/buscar_paciente')
-def buscar_paciente():
-    u_id = session.get('usuario_id')
-    if not u_id:
-        return jsonify([]), 401 # No autorizado si no hay sesión
-
-    query = request.args.get('q', '').strip()
-    if len(query) < 2:
-        return jsonify([]) # No buscar si es un solo caracter
-
-    # Buscamos coincidencias en Nombre, CURP o NSS (ajusta los campos según tu esquema de 'pacientes')
-    # Usamos $regex para búsquedas parciales tipo "LIKE"
-    criterio = {
-        "$or": [
-            {"nombre": {"$regex": query, "$options": "i"}},
-            {"curp": {"$regex": query, "$options": "i"}},
-            {"nss": {"$regex": query, "$options": "i"}}
-        ]
-    }
-
-    # Traemos un límite de 5 o 6 registros para no saturar el menú desplegable
-    pacientes_db = db.pacientes.find(criterio).limit(6)
-
-    resultados = []
-    for p in pacientes_db:
-        resultados.append({
-            "nombre": p.get("nombre", "Sin Nombre"),
-            "curp": p.get("curp", ""),
-            "nss": p.get("nss", "N/A")
-        })
-
-    # Retornamos la lista en formato JSON para que el JS del HTML la procese
-    return jsonify(resultados)
+    return render_template('expediente_archivos.html', paciente=paciente, archivos=archivos)
 
 @app.route('/expediente/<curp>')
 def ver_expediente(curp):
@@ -651,7 +708,14 @@ def guardar_expediente():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
     
-# --- RUTAS PARA ANEXOS ---
+@app.route('/expediente/<curp>')
+def abrir_expediente(curp):
+    # Buscamos los datos del paciente para que el asistente ya aparezca con su nombre
+    paciente = db.pacientes.find_one({"curp": curp})
+    return render_template('expediente.html', paciente=paciente)
+
+    
+#____________________________Anexos y Archivos____________________________________________
 
 
 @app.route('/paciente/<curp>/anexos')
@@ -693,11 +757,6 @@ def guardar_anexo_neurologia():
     )
     return jsonify({"status": "success"})
     
-@app.route('/expediente/<curp>')
-def abrir_expediente(curp):
-    # Buscamos los datos del paciente para que el asistente ya aparezca con su nombre
-    paciente = db.pacientes.find_one({"curp": curp})
-    return render_template('expediente.html', paciente=paciente)
 
 @app.route('/importar_estudio/<curp>', methods=['POST'])
 def importar_estudio(curp):
@@ -725,7 +784,36 @@ def importar_estudio(curp):
     flash("Estudio importado correctamente", "success")
     return redirect(url_for('perfil_paciente', curp=curp))
 
-
+@app.route('/subir_archivo_paciente/<curp>', methods=['POST'])
+def subir_archivo_paciente(curp):
+    if 'estudio_medico' not in request.files:
+        flash("No se seleccionó ningún archivo", "danger")
+        return redirect(url_for('perfil_paciente', curp=curp))
+        
+    file = request.files['estudio_medico']
+    if file.filename == '':
+        flash("Archivo vacío", "danger")
+        return redirect(url_for('perfil_paciente', curp=curp))
+        
+    if file:
+        # Renombrar el archivo de forma segura incluyendo la CURP del paciente y la fecha
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = secure_filename(f"{curp}_{timestamp}_{file.filename}")
+        filepath = os.path.join(app.config['UPLOAD_DOCS_FOLDER'], filename)
+        file.save(filepath)
+        
+        # Registrar el documento en MongoDB en una lista o colección dedicada
+        nuevo_documento = {
+            "curp_paciente": curp,
+            "nombre_archivo": file.filename,
+            "ruta_archivo": f"/{filepath}",
+            "fecha_subida": datetime.now().strftime("%d/%m/%Y - %H:%M")
+        }
+        
+        # Insertamos en una nueva colección del expediente
+        db.expedientes_archivos.insert_one(nuevo_documento)
+        
+    return redirect(url_for('perfil_paciente', curp=curp))
 
 
 @app.route('/logout')
@@ -756,92 +844,6 @@ def update_general(curp):
     flash('Información actualizada con éxito', 'success')
     return redirect(url_for('ver_expediente', curp=curp))
 
-@app.route('/search_patient', methods=['GET'])
-def search_patient():
-    query = request.args.get('query')
-    if not query:
-        return redirect(url_for('dashboard'))
-    query = query.upper()
-    paciente = db.pacientes.find_one({"curp": query})
-    if paciente:
-        return render_template('expediente.html', paciente=paciente)
-    flash('No se encontró ningún paciente con esa CURP', 'warning')
-    return redirect(url_for('dashboard'))
-
-@app.route('/api/sugerencias_pacientes')
-def sugerencias_pacientes():
-    # CORRECCIÓN: Quitamos el .upper() para no alterar las cadenas de búsqueda de texto de los nombres
-    query = request.args.get('q', '')
-    if len(query) < 2:  # No buscar hasta que escriba al menos 2 letras
-        return jsonify([])
-
-    # Buscamos coincidencias en nombre o CURP
-    pacientes = db.pacientes.find({
-        "$or": [
-            {"nombre": {"$regex": query, "$options": "i"}},
-            {"curp": {"$regex": query, "$options": "i"}}
-        ]
-    }).limit(5) # Solo mostramos las primeras 5 sugerencias
-
-    resultados = []
-    for p in pacientes:
-        resultados.append({
-            "nombre": p.get('nombre', 'Sin Nombre'),
-            "curp": p.get('curp', 'Sin CURP'),
-            "nss": p.get('nss', 'N/A')  # Se añade por si la agenda lo requiere al renderizar la sugerencia
-        })
-    
-    return jsonify(resultados)
-
-
-# --- LÓGICA DE CONSULTA ---
-
-@app.route('/preparar_consulta', methods=['POST'])
-def preparar_consulta():
-    curp = request.form.get('curp').upper()
-    paciente = db.pacientes.find_one({"curp": curp})
-    if paciente:
-        return render_template('nuevaconsulta.html', paciente=paciente)
-    else:
-        flash('El paciente no está registrado.', 'danger')
-        return redirect(url_for('dashboard'))
-
-@app.route('/guardar_consulta/<curp>', methods=['POST'])
-def guardar_consulta(curp):
-    ahora = datetime.now()
-    
-    # Recogemos TODOS los datos del nuevo formulario
-    nueva_nota = {
-        "curp_paciente": curp,
-        "fecha": ahora.strftime("%d/%m/%Y"),
-        "hora": ahora.strftime("%H:%M"),
-        "peso": request.form.get('peso'),
-        "talla": request.form.get('talla'),
-        "temp": request.form.get('temp'),
-        "presion": request.form.get('presion'),
-        "motivo": request.form.get('motivo'),
-        "diagnostico": request.form.get('diagnostico'),
-        "pronostico": request.form.get('pronostico'),
-        "tratamiento": request.form.get('tratamiento')
-    }
-    
-    # 1. Guardamos la consulta en la colección de consultas
-    db.consultas.insert_one(nueva_nota)
-    
-    # 2. Actualizamos la fecha de última visita en la colección de pacientes
-    # Usamos el formato para que tu tabla del Dashboard se vea con hora
-    fecha_tabla = ahora.strftime("%d %b %Y - %H:%M")
-    db.pacientes.update_one(
-        {"curp": curp}, 
-        {"$set": {"ultima_visita": fecha_tabla}}
-    )
-    
-    # 3. Jalamos los datos del paciente para la receta
-    paciente_data = db.pacientes.find_one({"curp": curp})
-    
-    # 4. IMPORTANTE: Usamos el nombre que elegiste 'nuevaconsulta.html'
-    # Pero aquí devolvemos 'receta.html' porque ya terminó la consulta
-    return render_template('receta.html', consulta=nueva_nota, paciente=paciente_data)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
