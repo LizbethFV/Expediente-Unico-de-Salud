@@ -210,7 +210,7 @@
             </div>
 
             <div class="bg-white p-5 card-shadow text-center rounded-sm">
-                <p class="text-blue-950 text-[11px] font-black uppercase">Citas por atender</p>
+                <p class="text-blue-950 text-[11px] font-black uppercase">Citas por atender hoy</p>
                 <p class="text-2xl font-bold text-blue-950 mt-2">{{ citas_hoy }}</p>
             </div>
             <div class="bg-eus-dark p-5 card-shadow text-blue-600 rounded-sm">
@@ -303,18 +303,17 @@
 
             <div class="text-center mb-8">
                 <h2 class="text-2xl font-black text-[#242552]">Agendar Cita</h2>
-                <p class="text-gray-500 text-sm font-medium">Ingresa los detalles de la
-                    próxima visita</p>
+                <p class="text-gray-400 text-sm font-medium">Ingresa los detalles de la próxima visita</p>
             </div>
 
-            <form action="/agendar_cita" method="POST" class="space-y-3">
+            <form action="/agendar_cita" method="POST" class="space-y-4">
                 <div class="relative">
-                    <label class="text-xs font-bold text-gray-500 uppercase">
+                    <label class="text-xs font-bold text-gray-400 uppercase">
                         Paciente (Nombre, CURP o NSS)
                     </label>
                     <input type="text" id="inputBusquedaAgenda" oninput="buscarParaAgenda()" autocomplete="off"
                         placeholder="Escribe para buscar..."
-                        class="w-full bg-blue-100 border-2 border-transparent focus:border-blue-300 rounded-xl px-6 py-2 outline-none text-white font-bold transition">
+                        class="w-full bg-slate-50 border border-gray-300 focus:border-blue-500 rounded-xl px-3 py-2 outline-none text-gray-800 font-bold transition text-xs">
 
                     <div id="sugerenciasAgenda"
                         class="absolute top-full left-0 right-0 bg-white mt-2 rounded-2xl shadow-2xl border border-gray-100 hidden z-[200] overflow-hidden">
@@ -323,40 +322,42 @@
                     <input type="hidden" name="curp" id="curpSeleccionada">
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="text-xs font-bold text-gray-500 uppercase">Fecha</label>
+                        <label class="text-[11px] font-bold text-gray-600 uppercase block mb-1">Fecha</label>
                         <input type="date" name="fecha" required
-                            class="w-full bg-blue-100 border-2 border-transparent focus:border-blue-300 rounded-xl px-6 py-2 outline-none text-[#242552] font-bold transition text-sm">
+                            class="w-full bg-slate-50 border border-gray-300 focus:border-blue-500 rounded-xl px-3 py-2 outline-none text-[#242552] font-bold transition text-xs">
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-gray-500 uppercase">Hora</label>
+                        <label class="text-[11px] font-bold text-gray-600 uppercase block mb-1">Hora</label>
                         <input type="time" name="hora" required
-                            class="w-full bg-blue-100 border-2 border-transparent focus:border-blue-300 rounded-xl px-6 py-2 outline-none text-[#242552] font-bold transition text-sm">
+                            class="w-full bg-slate-50 border border-gray-300 focus:border-blue-500 rounded-xl px-3 py-2 outline-none text-[#242552] font-bold transition text-xs">
                     </div>
                 </div>
 
                 <div>
-                    <label class="text-xs font-bold text-gray-500 uppercase">
+                    <label class="text-[11px] font-bold text-gray-600 uppercase block mb-1">
                         Especialidad / Motivo
                     </label>
-                    <input type="text" name="motivo" placeholder="Ej. Cardiología, Pediatría, Seguimiento..." required
-                        class="w-full bg-blue-100 border-2 border-transparent focus:border-blue-300 rounded-xl px-6 py-2 outline-none text-[#242552] font-bold transition">
+                    <input type="text" name="motivo" placeholder="Ej. Odontología, Seguimiento..." required
+                        class="w-full bg-slate-50 border border-gray-300 focus:border-blue-500 rounded-xl px-3 py-2 outline-none text-[#242552] font-bold transition text-xs">
                 </div>
 
                 <div class="flex flex-col space-y-3 pt-4">
                     <button type="submit"
-                        class="px-6 py-3 bg-eus-dark text-white rounded-xl font-bold shadow-lg hover:bg-blue-600 transition">
+                        class="w-full px-4 py-2.5 bg-[#242552] text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md hover:bg-blue-700 transition-all">
                         Confirmar y Agendar
                     </button>
-                    <button type="button" onclick="document.getElementById('modalAgenda').classList.add('hidden')"
-                        class="w-full text-gray-500 font-bold text-sm hover:text-gray-600 transition">
+                    <button type="button" 
+                            onclick="this.closest('.fixed').classList.add('hidden')"
+                            class="w-full text-gray-500 font-bold text-sm hover:text-gray-600 transition">
                         Cancelar
                     </button>
                 </div>
             </form>
         </div>
     </div>
+
     <script>
         // 1. Tus funciones existentes para abrir/cerrar manualmente
         function openModalConsulta() {
@@ -371,13 +372,10 @@
             modal.classList.remove('flex');
         }
 
-        // 2. AQUÍ PONES EL NUEVO CÓDIGO
-        // Este se ejecuta solo cuando la página carga y detecta un error
+        // 2. Control de mensajes flash de errores
         document.addEventListener("DOMContentLoaded", function () {
             {% with messages = get_flashed_messages(with_categories = true) %}
             {% if messages %}
-            // IMPORTANTE: Asegúrate de que el ID sea 'modalPaciente' 
-            // o el ID que use tu recuadro de registro
             const modal = document.getElementById('modalPaciente');
             if (modal) {
                 modal.classList.remove('hidden');
@@ -387,10 +385,11 @@
             {% endwith %}
         });
 
+        // CORREGIDO: Ahora busca en '/buscar_paciente' igual que la pestaña de agenda
         async function buscarParaAgenda() {
             const input = document.getElementById('inputBusquedaAgenda');
             const lista = document.getElementById('sugerenciasAgenda');
-            const query = input.value;
+            const query = input.value.trim();
 
             if (query.length < 2) {
                 lista.classList.add('hidden');
@@ -398,7 +397,8 @@
             }
 
             try {
-                const response = await fetch(`/api/sugerencias_pacientes?q=${query}`);
+                // CAMBIADO: Usando la ruta correcta que sí responde con los datos de pacientes
+                const response = await fetch(`/buscar_paciente?q=${encodeURIComponent(query)}`);
                 const pacientes = await response.json();
 
                 if (pacientes.length > 0) {
@@ -407,32 +407,22 @@
                         const div = document.createElement('div');
                         div.className = "px-6 py-4 hover:bg-blue-50 cursor-pointer flex items-center border-b border-gray-50 last:border-none";
                         div.innerHTML = `
-                    <div class="flex-grow">
-                        <p class="font-bold text-[#242552] text-sm">${p.nombre}</p>
-                        <div class="flex space-x-3 text-[9px]">
-                            <span class="text-gray-400 font-mono">CURP: ${p.curp}</span>
-                            <span class="text-blue-500 font-bold">NSS: ${p.nss}</span>
-                        </div>
-                    </div>
-                `;
+                            <div class="flex-grow">
+                                <p class="font-bold text-[#242552] text-sm">${p.nombre}</p>
+                                <div class="flex space-x-3 text-[9px]">
+                                    <span class="text-gray-400 font-mono">CURP: ${p.curp}</span>
+                                    <span class="text-blue-500 font-bold">NSS: ${p.nss || 'N/A'}</span>
+                                </div>
+                            </div>
+                        `;
 
-                        // Al dar clic, llenamos el input con el nombre y garantizamos que la CURP viaje a Flask
                         div.onclick = () => {
                             input.value = p.nombre;
 
-                            // Buscamos el elemento oculto del formulario
-                            let hiddenCurp = document.getElementById('curpSeleccionada');
-                            if (!hiddenCurp) {
-                                // Si por alguna razón no existe en el HTML, lo creamos dinámicamente para que Flask no reciba null
-                                hiddenCurp = document.createElement('input');
-                                hiddenCurp.type = 'hidden';
-                                hiddenCurp.id = 'curpSeleccionada';
-                                input.parentNode.appendChild(hiddenCurp);
+                            const hiddenCurp = document.getElementById('curpSeleccionada');
+                            if (hiddenCurp) {
+                                hiddenCurp.value = p.curp;
                             }
-
-                            // LE ASIGNAMOS EL NAME CORRECTO PARA EL BACKEND
-                            hiddenCurp.name = 'curp_paciente';
-                            hiddenCurp.value = p.curp;
 
                             lista.classList.add('hidden');
                         };
@@ -440,17 +430,19 @@
                     });
                     lista.classList.remove('hidden');
                 } else {
-                    lista.classList.add('hidden');
+                    lista.innerHTML = '<div class="px-6 py-4 text-xs text-gray-400 font-bold">No se encontraron resultados</div>';
+                    lista.classList.remove('hidden');
                 }
             } catch (error) {
-                console.error("Error:", error);
+                console.error("Error en la búsqueda del Dashboard:", error);
             }
         }
 
+        // Búsqueda global del Dashboard superior (redirige a perfiles)
         async function buscarSugerencias() {
             const input = document.getElementById('inputGoogle');
             const lista = document.getElementById('listaSugerencias');
-            const query = input.value;
+            const query = input.value.trim();
 
             if (query.length < 2) {
                 lista.classList.add('hidden');
@@ -458,22 +450,22 @@
             }
 
             try {
-                const response = await fetch(`/api/sugerencias_pacientes?q=${query}`);
+                // CAMBIADO: También unificado a la ruta funcional por si acaso
+                const response = await fetch(`/buscar_paciente?q=${encodeURIComponent(query)}`);
                 const pacientes = await response.json();
 
                 if (pacientes.length > 0) {
-                    lista.innerHTML = ''; // Limpiar lista previa
+                    lista.innerHTML = '';
                     pacientes.forEach(p => {
                         const div = document.createElement('div');
                         div.className = "px-6 py-4 hover:bg-blue-50 cursor-pointer flex items-center border-b border-gray-50 last:border-none";
                         div.innerHTML = `
-                    <i class="fas fa-history text-gray-300 mr-4"></i>
-                    <div>
-                        <p class="font-bold text-[#242552] text-sm">${p.nombre}</p>
-                        <p class="text-[10px] text-gray-400 font-mono">${p.curp}</p>
-                    </div>
-                `;
-                        // ACTUALIZADO: Al dar clic, redirecciona directamente al perfil del paciente
+                            <i class="fas fa-history text-gray-300 mr-4"></i>
+                            <div>
+                                <p class="font-bold text-[#242552] text-sm">${p.nombre}</p>
+                                <p class="text-[10px] text-gray-400 font-mono">${p.curp}</p>
+                            </div>
+                        `;
                         div.onclick = () => window.location.href = `/perfil/${p.curp}`;
                         lista.appendChild(div);
                     });
@@ -486,31 +478,32 @@
             }
         }
 
-        // Cerrar la lista si el usuario hace clic fuera del buscador
+        // Eventos de clicks externos para cerrar listas y menús
         document.addEventListener('click', (e) => {
             if (document.getElementById('inputGoogle') && !document.getElementById('inputGoogle').contains(e.target)) {
-                document.getElementById('listaSugerencias').classList.add('hidden');
+                if(document.getElementById('listaSugerencias')) {
+                    document.getElementById('listaSugerencias').classList.add('hidden');
+                }
             }
         });
+
         function toggleDropdown() {
             const dropdown = document.getElementById('profileDropdown');
-            dropdown.classList.toggle('hidden');
+            if (dropdown) dropdown.classList.toggle('hidden');
         }
 
-        // Opcional: Cerrar el menú si el usuario hace clic fuera de él
         window.onclick = function (event) {
             if (!event.target.closest('button')) {
-                const dropdowns = document.getElementsByClassName("profile-dropdown");
                 const dropdown = document.getElementById('profileDropdown');
                 if (dropdown && !dropdown.classList.contains('hidden')) {
                     dropdown.classList.add('hidden');
                 }
             }
         }
+
         function openModal() { document.getElementById('modalPaciente').classList.replace('hidden', 'flex'); }
         function closeModal() { document.getElementById('modalPaciente').classList.replace('flex', 'hidden'); }
     </script>
-
 
 </body>
 
