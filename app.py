@@ -8,7 +8,9 @@ from bson.objectid import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = "secreto_eus_mexico" 
+
+# CIBERSEGURIDAD: Ocultamos la clave secreta en una variable de entorno
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "una-clave-por-defecto-segura")
 
 UPLOAD_FOLDER = 'static/firmas'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -17,8 +19,12 @@ UPLOAD_DOCS_FOLDER = 'static/expedientes'
 app.config['UPLOAD_DOCS_FOLDER'] = UPLOAD_DOCS_FOLDER
 os.makedirs(UPLOAD_DOCS_FOLDER, exist_ok=True)
 
-# !!! CAMBIO 1: CONEXIÓN FLEXIBLE
-MONGO_URI = os.getenv("MONGO_URL", "mongodb+srv://PROYECTOEUSMEX:rSIv8WS387liKnY@clustereusmex.gv2jm3t.mongodb.net/?appName=ClusterEUSMEX")
+# CIBERSEGURIDAD: Conexión flexible. Si no encuentra la variable 'MONGO_URL', usa None o una local.
+MONGO_URI = os.getenv("MONGO_URL")
+if not MONGO_URI:
+    # Dejamos una cadena local vacía o de respaldo por si corres en tu PC
+    MONGO_URI = "mongodb://localhost:27017/expediente_salud"
+
 client = MongoClient(MONGO_URI)
 db = client['expediente_salud']
 
