@@ -303,18 +303,18 @@
 
             <div class="text-center mb-8">
                 <h2 class="text-2xl font-black text-[#242552]">Agendar Cita</h2>
-                <p class="text-gray-500 text-sm font-medium">Ingresa los detalles de la
+                <p class="text-gray-400 text-sm font-medium">Ingresa los detalles de la
                     próxima visita</p>
             </div>
 
-            <form action="/agendar_cita" method="POST" class="space-y-3">
+            <form action="/agendar_cita" method="POST" class="space-y-5">
                 <div class="relative">
-                    <label class="text-xs font-bold text-gray-500 uppercase">
+                    <label class="text-xs font-bold text-gray-400 uppercase">
                         Paciente (Nombre, CURP o NSS)
                     </label>
                     <input type="text" id="inputBusquedaAgenda" oninput="buscarParaAgenda()" autocomplete="off"
                         placeholder="Escribe para buscar..."
-                        class="w-full bg-blue-100 border-2 border-transparent focus:border-blue-300 rounded-xl px-6 py-2 outline-none text-white font-bold transition">
+                        class="w-full bg-blue-50 border-2 border-transparent focus:border-blue-300 rounded-full px-6 py-3 outline-none text-[#242552] font-bold transition">
 
                     <div id="sugerenciasAgenda"
                         class="absolute top-full left-0 right-0 bg-white mt-2 rounded-2xl shadow-2xl border border-gray-100 hidden z-[200] overflow-hidden">
@@ -325,32 +325,32 @@
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="text-xs font-bold text-gray-500 uppercase">Fecha</label>
+                        <label class="text-xs font-bold text-gray-400 uppercase">Fecha</label>
                         <input type="date" name="fecha" required
-                            class="w-full bg-blue-100 border-2 border-transparent focus:border-blue-300 rounded-xl px-6 py-2 outline-none text-[#242552] font-bold transition text-sm">
+                            class="w-full bg-blue-50 border-2 border-transparent focus:border-blue-300 rounded-full px-6 py-3 outline-none text-[#242552] font-bold transition text-sm">
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-gray-500 uppercase">Hora</label>
+                        <label class="text-xs font-bold text-gray-400 uppercase">Hora</label>
                         <input type="time" name="hora" required
-                            class="w-full bg-blue-100 border-2 border-transparent focus:border-blue-300 rounded-xl px-6 py-2 outline-none text-[#242552] font-bold transition text-sm">
+                            class="w-full bg-blue-50 border-2 border-transparent focus:border-blue-300 rounded-full px-6 py-3 outline-none text-[#242552] font-bold transition text-sm">
                     </div>
                 </div>
 
                 <div>
-                    <label class="text-xs font-bold text-gray-500 uppercase">
+                    <label class="text-xs font-bold text-gray-400 uppercase">
                         Especialidad / Motivo
                     </label>
                     <input type="text" name="motivo" placeholder="Ej. Cardiología, Pediatría, Seguimiento..." required
-                        class="w-full bg-blue-100 border-2 border-transparent focus:border-blue-300 rounded-xl px-6 py-2 outline-none text-[#242552] font-bold transition">
+                        class="w-full bg-blue-50 border-2 border-transparent focus:border-blue-300 rounded-full px-6 py-3 outline-none text-[#242552] font-bold transition">
                 </div>
 
                 <div class="flex flex-col space-y-3 pt-4">
                     <button type="submit"
-                        class="px-6 py-3 bg-eus-dark text-white rounded-xl font-bold shadow-lg hover:bg-blue-600 transition">
+                        class="px-6 py-3 bg-eus-dark text-white rounded-full font-bold shadow-lg hover:bg-blue-600 transition">
                         Confirmar y Agendar
                     </button>
                     <button type="button" onclick="document.getElementById('modalAgenda').classList.add('hidden')"
-                        class="w-full text-gray-500 font-bold text-sm hover:text-gray-600 transition">
+                        class="w-full text-gray-400 font-bold text-sm hover:text-gray-600 transition">
                         Cancelar
                     </button>
                 </div>
