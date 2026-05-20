@@ -148,17 +148,20 @@ def register_action():
     usuario = request.form.get('usuario')
     email = request.form.get('email')
     cedula = request.form.get('cedula')
-    password = request.form.get('password')
+    password_plano = request.form.get('password') # Renombrado para mayor claridad
     
     if db.usuarios.find_one({"$or": [{"username": usuario}, {"cedula": cedula}]}):
         flash('El usuario o la cédula ya están registrados', 'warning')
         return redirect(url_for('registro_page'))
 
+    # CIBERSEGURIDAD: Ciframos el password antes de meterlo a la base de datos
+    password_cifrado = generate_password_hash(password_plano)
+
     db.usuarios.insert_one({
         "username": usuario, 
         "email": email,
         "cedula": cedula,
-        "password": password
+        "password": password_cifrado # <--- ¡Ahora sí viaja ultra seguro!
     })
     flash('¡Médico registrado con éxito!', 'success')
     return redirect(url_for('dashboard'))
@@ -168,10 +171,11 @@ def login_action():
     usuario_ingresado = request.form.get('usuario')
     password_ingresado = request.form.get('password')
     
-    # Buscamos al usuario en la base de datos
-    user = db.usuarios.find_one({"username": usuario_ingresado, "password": password_ingresado})
+    # 1. Buscamos al usuario únicamente por su nombre de usuario
+    user = db.usuarios.find_one({"username": usuario_ingresado})
     
-    if user:
+    # 2. CIBERSEGURIDAD: Validamos la contraseña usando la función de hash
+    if user and check_password_hash(user['password'], password_ingresado):
         # GUARDAMOS EL ID en la sesión como 'usuario_id'
         session['usuario_id'] = str(user['_id']) 
         return redirect(url_for('dashboard'))
