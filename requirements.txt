@@ -4,3 +4,4 @@ python-dotenv
 flask-cors
 dnspython
 gunicorn==21.2.0
+gunicorn==21.2.0
