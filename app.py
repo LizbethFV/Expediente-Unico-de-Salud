@@ -23,53 +23,44 @@ client = MongoClient(MONGO_URI)
 db = client['expediente_salud']
 
 # --- RUTAS DE NAVEGACIÓN ---
-@app.route('/', methods=['GET', 'POST']) # <-- Agregamos POST aquí también
+@app.route('/', methods=['GET', 'POST'])
 def login_page():
     if request.method == 'POST':
         username = request.form.get('username')
         password_plano = request.form.get('password')
         
-        # 1. Buscamos al usuario únicamente por su nombre de usuario
+        # Buscamos al usuario solo por su username
         usuario = db.usuarios.find_one({"username": username})
         
-        # 2. Ciberseguridad: Comparamos el password escrito con el hash de la BD
+        # CIBERSEGURIDAD: Comparamos el password escrito con el hash de la BD
         if usuario and check_password_hash(usuario['password'], password_plano):
-            # Si coincide, creamos la sesión del médico
             session['usuario_id'] = str(usuario['_id'])
             return redirect(url_for('dashboard'))
         else:
-            # Si no coincide o no existe el usuario, puedes mandar un mensaje de error
+            # Si falla, vuelve a cargar el login (puedes pasarle un mensaje de error si quieres)
             return render_template('login.html', error="Usuario o contraseña incorrectos")
             
-    # Si entra normal (GET), muestra el formulario limpio
     return render_template('login.html')
-
-
 
 @app.route('/registro', methods=['GET', 'POST'])
 def registro_page():
     if request.method == 'POST':
-        # 1. Obtenemos los datos que el usuario escribió en el formulario HTML
         username = request.form.get('username')
         password_plano = request.form.get('password')
-        nombre = request.form.get('nombre') # Por si guardas su nombre real
+        nombre = request.form.get('nombre')
         
-        # 2. Ciberseguridad: Ciframos la contraseña antes de mandarla a Mongo
+        # CIBERSEGURIDAD: Ciframos la contraseña antes de guardarla en Mongo
         password_cifrado = generate_password_hash(password_plano)
         
-        # 3. Guardamos el registro seguro en la base de datos
         nuevo_usuario = {
             "username": username,
-            "password": password_cifrado,  # <-- Aquí va el texto cifrado, no el plano
+            "password": password_cifrado,  # Guardamos el hash seguro
             "nombre": nombre,
             "rol": "medico"
         }
         db.usuarios.insert_one(nuevo_usuario)
-        
-        # 4. Lo mandamos al login para que estrene su cuenta
         return redirect(url_for('login_page'))
         
-    # Si entra normal por el navegador (GET), solo muestra la página
     return render_template('registro.html')
 
 @app.route('/dashboard')
