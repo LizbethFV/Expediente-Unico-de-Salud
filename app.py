@@ -148,13 +148,13 @@ def register_action():
     usuario = request.form.get('usuario')
     email = request.form.get('email')
     cedula = request.form.get('cedula')
-    password_plano = request.form.get('password') # Renombrado para mayor claridad
+    password_plano = request.form.get('password') 
     
     if db.usuarios.find_one({"$or": [{"username": usuario}, {"cedula": cedula}]}):
         flash('El usuario o la cédula ya están registrados', 'warning')
         return redirect(url_for('registro_page'))
 
-    # CIBERSEGURIDAD: Ciframos el password antes de meterlo a la base de datos
+    # CIBERSEGURIDAD: Ciframos la contraseña antes de guardarla en Mongo
     password_cifrado = generate_password_hash(password_plano)
 
     db.usuarios.insert_one({
