@@ -8,6 +8,8 @@ from bson.objectid import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
 from bson.objectid import ObjectId
 import json
+import re
+from better_profanity import profanity
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "una-clave-por-defecto-segura")
@@ -29,6 +31,33 @@ if not MONGO_URI:
 
 client = MongoClient(MONGO_URI)
 db = client['expediente_salud']
+
+groserias_mexicanas = [
+    # --- Insultos comunes ---
+    "pendejo", "pendeja", "pendejos", "pendejas", "pndjo", "pndja",
+    "cabron", "cabrona", "cabrones", "cabronas", "cbrn",
+    "puto", "puta", "putos", "putas", "pto", "pta", "putito", "putita",
+    "culero", "culera", "culeros", "culeras", "clro", "clra",
+    "maricon", "joto", "jotos", "marica",
+    
+    # --- Derivados de la palabra con "Ch" ---
+    "chingar", "chingadera", "chingaderas", "chingado", "chingada", 
+    "chingon", "chingona", "chingo", "chingas", "chingue", "chingues",
+    
+    # --- Referencias vulgares u ofensivas ---
+    "verga", "vrga", "vergas", "vergazo", "vergazos",
+    "mamon", "mamona", "mamones", "mamar", "mamada", "mamadas",
+    "madrearse", "madreado", "madreada", "putazo", "putazos",
+    "baboso", "babosa", "estupido", "estupida", "imbecil", "idiota",
+    "mierda", "mrda", "mierdas", "cagar", "cagado", "cagada",
+    "cojer", "cojerte", "joder", "jodido", "jodida",
+    
+    # --- Nombres falsos, de burla o trolleo ---
+    "test", "prueba", "pruebas", "asdf", "asdfg", "qwerty",
+    "anonimo", "elpepe", "etesech", "chabelo", "goku", "dummy",
+    "falso", "falsa", "ninguno", "nadie", "inventado", "ejemplo"
+]
+profanity.load_censor_words(groserias_mexicanas)
 
 # ___________________Rutas de Inicio de Sesión y Registro________________________
 
@@ -301,7 +330,7 @@ def add_patient():
     # ====================================================================
     # FLUJO B: REGISTRAR UN PACIENTE NUEVO DESDE CERO
     # ====================================================================
-    nombre = request.form.get('nombre', '').upper().strip()
+    nombre = request.form.get('nombre', '').strip()
     curp = request.form.get('curp', '').upper().strip()
     nss = request.form.get('nss', '').strip()
     edad = request.form.get('edad', '').strip()
@@ -311,14 +340,22 @@ def add_patient():
         flash('El nombre y la CURP son obligatorios para un nuevo registro', 'danger')
         return redirect(url_for('dashboard'))
 
-    # 2. CANDADO CIBERSEGURIDAD 1: Expresión regular basada en tu esquema oficial de CURP
-    patron_curp = r"^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[A-Z0-9]{2}$"
+    # 2. CANDADO DE MODERACIÓN: Evitar groserías o nombres de broma (Súper blindado con acentos)
+    # Truco para quitar acentos y normalizar a minúsculas antes de validar
+    nombre_sin_acentos = nombre.lower().replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u')
+    
+    # Pasamos la versión en minúsculas y sin acentos por el filtro
+    if profanity.contains_profanity(nombre_sin_acentos):
+        flash('Error: El nombre del paciente contiene palabras inapropiadas o no permitidas.', 'danger')
+        return redirect(url_for('dashboard'))
 
+    # 3. CANDADO CIBERSEGURIDAD: Expresión regular basada en tu esquema oficial de CURP
+    patron_curp = r"^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[A-Z0-9]{2}$"
     if not re.match(patron_curp, curp):
         flash('Error: El formato de la CURP es inválido de acuerdo al esquema oficial (AAMMDD...).', 'danger')
         return redirect(url_for('dashboard'))
 
-    # 3. CANDADO CIBERSEGURIDAD 2: Validar rango de edad (0 a 120 años)
+    # 4. CANDADO DE INTEGRIDAD: Validar rango de edad (0 a 120 años)
     try:
         edad_int = int(edad)
         if edad_int < 0 or edad_int > 120:
@@ -328,19 +365,18 @@ def add_patient():
         flash('Error: La edad ingresada debe ser un número válido.', 'danger')
         return redirect(url_for('dashboard'))
 
-    # 4. Validación de duplicados en la base de datos
+    # 5. Validación de duplicados en la base de datos (CURP o NSS ya existentes)
     existente = db.pacientes.find_one({"$or": [{"curp": curp}, {"nss": nss}]})
-
     if existente:
         flash('Este CURP o NSS ya existe en el sistema', 'danger')
         return redirect(url_for('dashboard'))
 
-    # Si todo está perfecto, guardamos el registro limpio (guardamos la edad como número entero)
+    # Si todo pasa los filtros, preparamos el guardado oficial en mayúsculas
     nuevo_paciente = {
-        "nombre": nombre,
+        "nombre": nombre.upper(), # Lo guardamos estético y limpio en mayúsculas en MongoDB
         "curp": curp,
         "nss": nss,
-        "edad": edad_int, # Se guarda como entero para consultas analíticas más adelante
+        "edad": edad_int,        # Guardado como entero para estadísticas futuras
         "no_expediente": f"2026-{curp[:4]}" if len(curp) >= 4 else "2026-TEMP",
         "ultima_visita": datetime.now().strftime("%d %b %Y - %H:%M"),
         "estado": "Activo",
@@ -631,7 +667,30 @@ def detalle_consulta(id):
 def guardar_consulta(curp):
     ahora = datetime.now()
     
-    # Recogemos TODOS los datos del nuevo formulario
+    # 1. Recogemos los campos de texto que queremos proteger
+    motivo = request.form.get('motivo', '').strip()
+    diagnostico = request.form.get('diagnostico', '').strip()
+    tratamiento = request.form.get('tratamiento', '').strip()
+    pronostico = request.form.get('pronostico', '').strip()
+
+    # 2. CANDADO DE MODERACIÓN: Unificamos el texto para evaluarlo en un solo paso
+    texto_completo = f"{motivo} {diagnostico} {tratamiento} {pronostico}".lower()
+    
+    # Quitamos los acentos para que no burlen el filtro escribiendo mal adrede
+    texto_sin_acentos = (texto_completo
+                         .replace('á', 'a')
+                         .replace('é', 'e')
+                         .replace('í', 'i')
+                         .replace('ó', 'o')
+                         .replace('ú', 'u'))
+    
+    # Si el filtro detecta cualquier grosería de la lista mexicana
+    if profanity.contains_profanity(texto_sin_acentos):
+        flash('Error: El contenido de la nota médica o receta contiene palabras inapropiadas o lenguaje no permitido.', 'danger')
+        # Redirigimos de vuelta al dashboard por seguridad
+        return redirect(url_for('dashboard'))
+
+    # 3. Si todo está limpio, creamos el documento para guardarlo en MongoDB
     nueva_nota = {
         "curp_paciente": curp,
         "fecha": ahora.strftime("%d/%m/%Y"),
@@ -640,13 +699,13 @@ def guardar_consulta(curp):
         "talla": request.form.get('talla'),
         "temp": request.form.get('temp'),
         "presion": request.form.get('presion'),
-        "motivo": request.form.get('motivo'),
-        "diagnostico": request.form.get('diagnostico'),
-        "pronostico": request.form.get('pronostico'),
-        "tratamiento": request.form.get('tratamiento')
+        "motivo": motivo,
+        "diagnostico": diagnostico,
+        "pronostico": pronostico,
+        "tratamiento": tratamiento
     }
     
-    # 1. Guardamos la consulta en la colección de consultas
+    # Guardamos la consulta limpia en la colección de consultas
     db.consultas.insert_one(nueva_nota)
     
     # Usamos el formato para que tu tabla del Dashboard se vea con hora
@@ -656,11 +715,10 @@ def guardar_consulta(curp):
         {"$set": {"ultima_visita": fecha_tabla}}
     )
     
-    # 3. Jalamos los datos del paciente para la receta
+    # Jalamos los datos del paciente para la receta
     paciente_data = db.pacientes.find_one({"curp": curp})
     
-
-    # Pero aquí devolvemos 'receta.html' porque ya terminó la consulta
+    # Devolvemos 'receta.html' porque ya terminó la consulta de forma segura
     return render_template('receta.html', consulta=nueva_nota, paciente=paciente_data)
 
 @app.route('/preparar_consulta', methods=['POST'])
