@@ -277,7 +277,9 @@ def add_patient():
     if not u_id:
         return redirect(url_for('login_page'))
 
-    # Vincular paciente existente por CURP (si se llenó ese campo)
+    # ====================================================================
+    # FLUJO A: VINCULAR PACIENTE EXISTENTE POR CURP
+    # ====================================================================
     curp_buscar = request.form.get('curp_buscar')
     if curp_buscar:
         curp_buscar = curp_buscar.upper().strip()
@@ -286,7 +288,6 @@ def add_patient():
         paciente_existente = db.pacientes.find_one({"curp": curp_buscar})
         
         if paciente_existente:
-            #$addToSet en lugar de $set para agregarlo a una lista de médicos
             db.pacientes.update_one(
                 {"curp": curp_buscar},
                 {"$addToSet": {"medicos_ids": ObjectId(u_id)}}
@@ -297,42 +298,57 @@ def add_patient():
             
         return redirect(url_for('lista_pacientes'))
 
-    #Registro de nuevo paciente (si no se llenó el campo de búsqueda por CURP)
-    # Recogemos los datos limpios desde el formulario de manera segura
+    # ====================================================================
+    # FLUJO B: REGISTRAR UN PACIENTE NUEVO DESDE CERO
+    # ====================================================================
     nombre = request.form.get('nombre', '').upper().strip()
     curp = request.form.get('curp', '').upper().strip()
     nss = request.form.get('nss', '').strip()
     edad = request.form.get('edad', '').strip()
 
-    # Validación de seguridad por si envían el formulario vacío
+    # 1. Validación de campos vacíos
     if not nombre or not curp:
         flash('El nombre y la CURP son obligatorios para un nuevo registro', 'danger')
         return redirect(url_for('dashboard'))
 
-    # Validación de duplicados en la base de datos
-    # Evita que se dupliquen CURP o NSS ya existentes en el sistema global
+    # 2. CANDADO CIBERSEGURIDAD 1: Expresión regular basada en tu esquema oficial de CURP
+    patron_curp = r"^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[A-Z0-9]{2}$"
+
+    if not re.match(patron_curp, curp):
+        flash('Error: El formato de la CURP es inválido de acuerdo al esquema oficial (AAMMDD...).', 'danger')
+        return redirect(url_for('dashboard'))
+
+    # 3. CANDADO CIBERSEGURIDAD 2: Validar rango de edad (0 a 120 años)
+    try:
+        edad_int = int(edad)
+        if edad_int < 0 or edad_int > 120:
+            flash('Error: La edad debe estar en un rango válido entre 0 y 120 años.', 'danger')
+            return redirect(url_for('dashboard'))
+    except ValueError:
+        flash('Error: La edad ingresada debe ser un número válido.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    # 4. Validación de duplicados en la base de datos
     existente = db.pacientes.find_one({"$or": [{"curp": curp}, {"nss": nss}]})
 
     if existente:
         flash('Este CURP o NSS ya existe en el sistema', 'danger')
         return redirect(url_for('dashboard'))
 
-    # Si no existe, creamos un ÚNICO registro completo para el nuevo paciente
+    # Si todo está perfecto, guardamos el registro limpio (guardamos la edad como número entero)
     nuevo_paciente = {
         "nombre": nombre,
         "curp": curp,
         "nss": nss,
-        "edad": edad,
+        "edad": edad_int, # Se guarda como entero para consultas analíticas más adelante
         "no_expediente": f"2026-{curp[:4]}" if len(curp) >= 4 else "2026-TEMP",
         "ultima_visita": datetime.now().strftime("%d %b %Y - %H:%M"),
         "estado": "Activo",
         "estudios": [],
         "expediente_datos": {},
-        # CORRECCIÓN CLAVE: Lo guardamos desde el inicio como una lista con el primer ID
         "medicos_ids": [ObjectId(u_id)]
     }
     
-    # Insertamos el nuevo paciente en MongoDB
     db.pacientes.insert_one(nuevo_paciente)
     flash('Paciente registrado y añadido con éxito', 'success')
     return redirect(url_for('dashboard'))

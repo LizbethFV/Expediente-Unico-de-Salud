@@ -247,11 +247,15 @@
                     <div>
                         <label class="text-xs font-bold text-gray-500 uppercase">CURP</label>
                         <input type="text" name="curp" required maxlength="18" minlength="18"
+                            placeholder="AAAA000000XXXXXX00" pattern="^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[A-Z0-9]{2}$"
+                            title="La CURP debe tener 18 caracteres: 4 letras, 6 números (AAMMDD), H o M, 5 letras y 2 caracteres finales."
+                            oninput="this.value = this.value.toUpperCase()"
                             class="w-full bg-blue-100 border-none rounded-xl px-4 py-2 outline-none focus:ring-2 ring-blue-300 uppercase">
                     </div>
                     <div>
                         <label class="text-xs font-bold text-gray-500 uppercase">Edad</label>
-                        <input type="number" name="edad" required
+                        <input type="number" name="edad" required min="0" max="120"
+                            title="La edad debe ser un número válido entre 0 (recién nacido) y 120 años."
                             class="w-full bg-blue-100 border-none rounded-xl px-4 py-2 outline-none focus:ring-2 ring-blue-300">
                     </div>
                     <div>
@@ -281,7 +285,7 @@
                 <div class="relative">
                     <label class="text-xs font-bold text-gray-500 uppercase">CURP
                         del Paciente</label>
-                    <input type="text" name="curp"
+                    <input type="text" name="curp" oninput="this.value = this.value.toUpperCase()"
                         class="w-full bg-blue-100 border-2 border-transparent focus:border-blue-300 rounded-xl px-6 py-2 outline-none text-eus-dark font-bold transition">
                 </div>
 
@@ -311,9 +315,10 @@
                     <label class="text-xs font-bold text-gray-400 uppercase">
                         Paciente (Nombre, CURP o NSS)
                     </label>
-                    <input type="text" id="inputBusquedaAgenda" oninput="buscarParaAgenda()" autocomplete="off"
+                    <input type="text" id="inputBusquedaAgenda"
+                        oninput="this.value = this.value.toUpperCase(); buscarParaAgenda()" autocomplete="off"
                         placeholder="Escribe para buscar..."
-                        class="w-full bg-slate-50 border border-gray-300 focus:border-blue-500 rounded-xl px-3 py-2 outline-none text-gray-800 font-bold transition text-xs">
+                        class="w-full bg-slate-50 border border-gray-300 focus:border-blue-500 rounded-xl px-3 py-2 outline-none text-gray-800 font-bold transition text-xs uppercase">
 
                     <div id="sugerenciasAgenda"
                         class="absolute top-full left-0 right-0 bg-white mt-2 rounded-2xl shadow-2xl border border-gray-100 hidden z-[200] overflow-hidden">
@@ -348,9 +353,8 @@
                         class="w-full px-4 py-2.5 bg-[#242552] text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md hover:bg-blue-700 transition-all">
                         Confirmar y Agendar
                     </button>
-                    <button type="button" 
-                            onclick="this.closest('.fixed').classList.add('hidden')"
-                            class="w-full text-gray-500 font-bold text-sm hover:text-gray-600 transition">
+                    <button type="button" onclick="this.closest('.fixed').classList.add('hidden')"
+                        class="w-full text-gray-500 font-bold text-sm hover:text-gray-600 transition">
                         Cancelar
                     </button>
                 </div>
@@ -481,7 +485,7 @@
         // Eventos de clicks externos para cerrar listas y menús
         document.addEventListener('click', (e) => {
             if (document.getElementById('inputGoogle') && !document.getElementById('inputGoogle').contains(e.target)) {
-                if(document.getElementById('listaSugerencias')) {
+                if (document.getElementById('listaSugerencias')) {
                     document.getElementById('listaSugerencias').classList.add('hidden');
                 }
             }
