@@ -531,24 +531,38 @@ def agendar_cita():
 
     # Validación rápida de que los campos obligatorios no vengan vacíos
     if not curp or not fecha or not hora or not motivo:
-        # Puedes usar flash si manejas mensajes en el HTML o solo redirigir
         return redirect(url_for('agenda_page'))
 
-    # Construir el documento para la colección 'citas'
+    # Buscamos si el doctor ya tiene una cita reservada exactamente ese mismo día y hora
+    cita_conflictiva = db.citas.find_one({
+        "doctor_id": ObjectId(u_id),
+        "fecha": fecha,
+        "hora": hora
+    })
+
+    if cita_conflictiva:
+        flash('Error: Ya tienes una cita programada a esa misma hora. Por favor, selecciona otro horario.', 'danger')
+        return redirect(url_for('agenda_page'))
+
+    # ====================================================================
+    # Si el horario está libre, procedemos a construir el documento y guardarlo
+    # ====================================================================
     nueva_cita = {
         "doctor_id": ObjectId(u_id),
-        "curp_paciente": curp,         # Guardamos la CURP vinculada
+        "curp_paciente": curp.upper().strip(), # Nos aseguramos de guardarla limpia y estética
         "fecha": fecha,
         "hora": hora,
         "motivo": motivo,
-        "estado": "Pendiente"          # Estado inicial obligatorio para que lo lea tu ruta de /agenda
+        "estado": "Pendiente"          
     }
 
     # Insertar en MongoDB
     db.citas.insert_one(nueva_cita)
 
+    flash('Cita agendada exitosamente', 'success')
     # Redirigir de vuelta a la agenda para que se refresque y aparezca la nueva cita
     return redirect(url_for('agenda_page'))
+
 
 @app.route('/agenda')
 def agenda_page():
@@ -566,7 +580,7 @@ def agenda_page():
         "estado": "Pendiente"
     }).sort([("fecha", 1), ("hora", 1)]))
     
-    #CONTADOR FILTRADO: Contar cuántas citas tiene HOY este doctor específicamente
+    # CONTADOR FILTRADO: Contar cuántas citas tiene HOY este doctor específicamente
     hoy = datetime.now().strftime("%Y-%m-%d")
     citas_hoy = db.citas.count_documents({
         "doctor_id": ObjectId(u_id),
@@ -574,7 +588,7 @@ def agenda_page():
         "estado": "Pendiente"
     })
     
-    #Enviamos todo limpio al HTML
+    # Enviamos todo limpio al HTML
     return render_template(
         'agenda.html', 
         citas=citas, 
