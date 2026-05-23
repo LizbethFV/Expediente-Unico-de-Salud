@@ -524,13 +524,14 @@ def agendar_cita():
         return redirect(url_for('login_page'))
 
     # Capturar los datos enviados por el formulario inline
-    curp = request.form.get('curp')
-    fecha = request.form.get('fecha') # Viene en formato YYYY-MM-DD por el input tipo date
-    hora = request.form.get('hora')   # Viene en formato HH:MM por el input tipo time
-    motivo = request.form.get('motivo')
+    curp = request.form.get('curp', '')
+    fecha = request.form.get('fecha', '') 
+    hora = request.form.get('hora', '')   
+    motivo = request.form.get('motivo', '')
 
     # Validación rápida de que los campos obligatorios no vengan vacíos
     if not curp or not fecha or not hora or not motivo:
+        flash('Todos los campos son obligatorios para agendar una cita.', 'danger')
         return redirect(url_for('agenda_page'))
 
     # Buscamos si el doctor ya tiene una cita reservada exactamente ese mismo día y hora
@@ -542,14 +543,40 @@ def agendar_cita():
 
     if cita_conflictiva:
         flash('Error: Ya tienes una cita programada a esa misma hora. Por favor, selecciona otro horario.', 'danger')
-        return redirect(url_for('agenda_page'))
+        
+        # 💡 TRUCO: Jalamos los datos que la plantilla 'agenda.html' necesita
+        # para volver a dibujarse exactamente igual sin perder el contexto.
+        doctor_data = db.usuarios.find_one({"_id": ObjectId(u_id)})
+        citas_pendientes = list(db.citas.find({
+            "doctor_id": ObjectId(u_id), 
+            "estado": "Pendiente"
+        }).sort([("fecha", 1), ("hora", 1)]))
+        
+        hoy_str = datetime.now().strftime("%Y-%m-%d")
+        citas_hoy = db.citas.count_documents({
+            "doctor_id": ObjectId(u_id),
+            "fecha": hoy_str, 
+            "estado": "Pendiente"
+        })
+        
+        # Renderizamos directamente la plantilla en lugar de redireccionar.
+        # Al pasarle 'curp', 'fecha', 'hora' y 'motivo', el formulario puede conservar lo que el doctor escribió.
+        return render_template(
+            'agenda.html', 
+            citas=citas_pendientes, 
+            citas_hoy=citas_hoy, 
+            doctor=doctor_data,
+            curp_error=curp,
+            fecha_error=fecha,
+            hora_error=hora,
+            motivo_error=motivo
+        )
 
-    # ====================================================================
+
     # Si el horario está libre, procedemos a construir el documento y guardarlo
-    # ====================================================================
     nueva_cita = {
         "doctor_id": ObjectId(u_id),
-        "curp_paciente": curp.upper().strip(), # Nos aseguramos de guardarla limpia y estética
+        "curp_paciente": curp.upper().strip(), 
         "fecha": fecha,
         "hora": hora,
         "motivo": motivo,
@@ -560,7 +587,6 @@ def agendar_cita():
     db.citas.insert_one(nueva_cita)
 
     flash('Cita agendada exitosamente', 'success')
-    # Redirigir de vuelta a la agenda para que se refresque y aparezca la nueva cita
     return redirect(url_for('agenda_page'))
 
 
