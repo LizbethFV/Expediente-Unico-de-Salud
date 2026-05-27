@@ -361,8 +361,91 @@
             </form>
         </div>
     </div>
+    <div class="mt-12 text-center pb-6">
+        <p class="text-sm text-gray-500">
+            Para continuar usando la plataforma, puedes ver nuestros
+            <button type="button" onclick="abrirModalTerminos()"
+                class="text-blue-600 hover:text-blue-800 font-medium underline focus:outline-none">
+                términos y condiciones aquí
+            </button>
+        </p>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VENTANA EMERGENTE (MODAL) -->
+    <!-- ========================================== -->
+    <div id="modalTerminos"
+        class="fixed inset-0 z-50 hidden bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden transform transition-all scale-95 opacity-0 duration-300"
+            id="contenidoModal">
+
+            <!-- Encabezado -->
+            <div class="p-6 border-b border-gray-200 bg-gray-50">
+                <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    ⚖️ Términos y Condiciones de Uso
+                </h3>
+            </div>
+
+            <!-- Cuerpo con Scroll para los Términos -->
+            <div class="p-6 overflow-y-auto text-sm text-gray-600 space-y-4 leading-relaxed">
+                <p class="font-semibold text-gray-800">Última actualización: Mayo 2026</p>
+
+                <h4 class="font-bold text-gray-900 text-base mt-2">1. Aceptación de los Términos</h4>
+                <p>Al acceder y utilizar la plataforma digital de información centralizada, el usuario acepta de manera
+                    expresa y sin reserva alguna los presentes términos y condiciones de uso.</p>
+
+                <h4 class="font-bold text-gray-900 text-base mt-2">2. Protección de Datos y Confidencialidad</h4>
+                <p>Toda la información ingresada, incluyendo datos clínicos, expedientes y anexos de especialidad
+                    médica, está estrictamente protegida. Queda prohibida la reproducción, alteración o filtración de la
+                    base de datos a terceros sin la debida autorización explícita.</p>
+
+                <h4 class="font-bold text-gray-900 text-base mt-2">3. Uso Responsable de la Información</h4>
+                <p>El acceso a los módulos de consulta y administración está reservado para personal autorizado del
+                    equipo de salud. El usuario es completamente responsable de resguardar sus credenciales de acceso
+                    para evitar filtraciones en el servidor.</p>
+
+                <h4 class="font-bold text-gray-900 text-base mt-2">4. Limitación de Responsabilidad</h4>
+                <p>La plataforma actúa como una herramienta de centralización y soporte técnico digital. Las decisiones
+                    clínicas tomadas con base en las simulaciones o reportes registrados son responsabilidad exclusiva
+                    del personal médico a cargo.</p>
+            </div>
+
+            <!-- Pie del Modal con el Botón -->
+            <div class="p-4 border-t border-gray-200 bg-gray-50 flex justify-end">
+                <button type="button" onclick="cerrarModalTerminos()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg shadow transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Aceptar y Continuar
+                </button>
+            </div>
+
+        </div>
+    </div>
 
     <script>
+        function abrirModalTerminos() {
+            const modal = document.getElementById('modalTerminos');
+            const contenido = document.getElementById('contenidoModal');
+
+            modal.classList.remove('hidden');
+            // Pequeño delay para que la transición de Tailwind se note fluida
+            setTimeout(() => {
+                contenido.classList.remove('scale-95', 'opacity-0');
+                contenido.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function cerrarModalTerminos() {
+            const modal = document.getElementById('modalTerminos');
+            const contenido = document.getElementById('contenidoModal');
+
+            contenido.classList.remove('scale-100', 'opacity-100');
+            contenido.classList.add('scale-95', 'opacity-0');
+
+            // Esperamos a que termine la animación de desvanecido para ocultarlo por completo
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
         // 1. Tus funciones existentes para abrir/cerrar manualmente
         function openModalConsulta() {
             const modal = document.getElementById('modalConsulta');
