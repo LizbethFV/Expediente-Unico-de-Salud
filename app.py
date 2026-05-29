@@ -14,23 +14,28 @@ from better_profanity import profanity
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "una-clave-por-defecto-segura")
 
-# Configuración para subir archivos (firmas y documentos)
+# ==========================================
+# CONFIGURACIÓN PARA SUBIR ARCHIVOS
+# ==========================================
 UPLOAD_FOLDER = 'static/firmas'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Asegúrate de crear esta carpeta en tu proyecto para guardar las firmas
 UPLOAD_DOCS_FOLDER = 'static/expedientes'
 app.config['UPLOAD_DOCS_FOLDER'] = UPLOAD_DOCS_FOLDER
 os.makedirs(UPLOAD_DOCS_FOLDER, exist_ok=True)
 
-#Conexión a MongoDB
+# ==========================================
+# CONEXIÓN A MONGODB (CORREGIDA)
+# ==========================================
 MONGO_URI = os.getenv("MONGO_URL")
 if not MONGO_URI:
     # Dejamos una cadena local vacía o de respaldo por si corres en tu PC
     MONGO_URI = "mongodb://localhost:27017/expediente_salud"
 
 client = MongoClient(MONGO_URI)
-db = client['expediente_salud']
+
+# FORZAMOS el uso de 'expediente_db' que es donde Dokploy y tu string original guardaban los datos
+db = client['expediente_db']
 
 groserias_mexicanas = [
     # --- Insultos comunes ---
@@ -64,14 +69,23 @@ profanity.load_censor_words(groserias_mexicanas)
 @app.route('/registro', methods=['GET', 'POST'])
 def registro_page():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password_plano = request.form.get('password')
-        nombre = request.form.get('nombre')
+        # Agregamos .strip() para limpiar espacios accidentales que mete el teclado
+        username = request.form.get('username', '').strip()
+        password_plano = request.form.get('password', '').strip()
+        nombre = request.form.get('nombre', '').strip()
         
-        # Cifrado de la contraseña usando werkzeug.security para mayor seguridad
+        if not all([username, password_plano, nombre]):
+            flash('Por favor, completa todos los campos', 'warning')
+            return render_template('registro.html')
+
+        # Verificación de duplicados antes de insertar
+        if db.usuarios.find_one({"username": username}):
+            flash('El nombre de usuario ya está registrado', 'warning')
+            return redirect(url_for('registro_page'))
+
+        # Cifrado seguro de la contraseña
         password_cifrado = generate_password_hash(password_plano)
         
-        # Validación de campos vacíos
         nuevo_usuario = {
             "username": username,
             "password": password_cifrado, 
@@ -79,48 +93,53 @@ def registro_page():
             "rol": "medico"
         }
         db.usuarios.insert_one(nuevo_usuario)
+        flash('¡Médico registrado con éxito!', 'success')
         return redirect(url_for('login_page'))
         
     return render_template('registro.html')
 
 @app.route('/auth/register', methods=['POST'])
 def register_action():
-    usuario = request.form.get('usuario')
-    email = request.form.get('email')
-    cedula = request.form.get('cedula')
-    password_plano = request.form.get('password') 
+    # Esta es tu segunda ruta de registro por si tus formularios apuntan aquí
+    usuario = request.form.get('usuario', '').strip()
+    email = request.form.get('email', '').strip()
+    cedula = request.form.get('cedula', '').strip()
+    password_plano = request.form.get('password', '').strip() 
 
-
-    # Validación de duplicados: Verificamos si ya existe un usuario con el mismo nombre o cédula
     if db.usuarios.find_one({"$or": [{"username": usuario}, {"cedula": cedula}]}):
         flash('El usuario o la cédula ya están registrados', 'warning')
         return redirect(url_for('registro_page'))
 
-    # Validación de campos vacíos
     if not all([usuario, email, cedula, password_plano]):
         flash('Por favor, completa todos los campos', 'warning')
         return redirect(url_for('registro_page'))
 
-    #Ciframos la contraseña antes de guardarla en la base de datos
     password_cifrado = generate_password_hash(password_plano)
 
     db.usuarios.insert_one({
         "username": usuario, 
         "email": email,
         "cedula": cedula,
-        "password": password_cifrado
+        "password": password_cifrado,
+        "rol": "medico"
     })
     flash('¡Médico registrado con éxito!', 'success')
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('login_page'))
 
 
 @app.route('/', methods=['GET', 'POST'])
 def login_page():
     if request.method == 'POST':
-        username = request.form.get('username')
+        # Captura y limpia tanto 'username' como 'usuario' para que sea compatible con cualquier formulario HTML
+        username = request.form.get('username') or request.form.get('usuario')
         password_plano = request.form.get('password')
         
-        # Buscamos al usuario solo por su username
+        if username:
+            username = username.strip()
+        if password_plano:
+            password_plano = password_plano.strip()
+        
+        # Buscamos al usuario por su username
         usuario = db.usuarios.find_one({"username": username})
         
         # Comparamos el password escrito con el hash de la BD
@@ -134,15 +153,18 @@ def login_page():
 
 @app.route('/auth/login', methods=['POST'])
 def login_action():
-    usuario_ingresado = request.form.get('usuario')
+    # Esta es tu segunda ruta de procesamiento por si el formulario de login apunta a /auth/login
+    usuario_ingresado = (request.form.get('usuario') or request.form.get('username'))
     password_ingresado = request.form.get('password')
     
-    # Buscamos al usuario únicamente por su nombre de usuario
+    if usuario_ingresado:
+        usuario_ingresado = usuario_ingresado.strip()
+    if password_ingresado:
+        password_ingresado = password_ingresado.strip()
+    
     user = db.usuarios.find_one({"username": usuario_ingresado})
     
-    # Validamos la contraseña usando la función de hash
     if user and check_password_hash(user['password'], password_ingresado):
-        # GUARDAMOS EL ID en la sesión como 'usuario_id'
         session['usuario_id'] = str(user['_id']) 
         return redirect(url_for('dashboard'))
     else:
