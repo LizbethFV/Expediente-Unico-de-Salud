@@ -8,23 +8,20 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
-<body body class="h-screen flex items-center justify-center p-4 bg-[#f0f7ff]">
+<body class="h-screen flex flex-col items-center justify-center p-4 bg-[#f0f7ff]">
 
     <div class="bg-white rounded-sm shadow-2xl flex max-w-5xl w-full overflow-hidden">
         <div class="w-full md:w-1/2 p-10">
             <div class="flex justify-between items-center mb-10">
                 <div class="flex items-center space-x-2">
-                    <img src="{{ url_for('static', filename='img/logoeuscolor.png') }}" class="w-14 h-13"
-                        alt="Logo EUS">
+                    <img src="{{ url_for('static', filename='img/logoeuscolor.png') }}" class="w-14 h-13" alt="Logo EUS">
                 </div>
             </div>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
             {% for category, message in messages %}
-            <div id="alert-box"
-                class="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 mb-6 rounded shadow-sm animate-pulse"
-                role="alert">
+            <div id="alert-box" class="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 mb-6 rounded shadow-sm animate-pulse" role="alert">
                 <p class="text-sm font-bold"><i class="fas fa-exclamation-circle mr-2"></i>{{ message }}</p>
             </div>
             {% endfor %}
@@ -36,23 +33,19 @@
             <form action="/auth/login" method="POST" class="space-y-4">
                 <div>
                     <label class="text-gray-500 text-sm ml-2">Nombre de usuario</label>
-                    <input type="text" name="username" id="username" required
-                        class="w-full bg-[#d6e3eb] rounded-xl px-4 py-2 outline-none focus:ring-2 ring-blue-400">
+                    <input type="text" name="username" id="username" required class="w-full bg-[#d6e3eb] rounded-xl px-4 py-2 outline-none focus:ring-2 ring-blue-400">
                 </div>
 
                 <div class="relative">
                     <label class="text-gray-500 text-sm ml-2">Contraseña</label>
-                    <input type="password" name="password" id="login_password" required
-                        class="w-full bg-[#d6e3eb] rounded-xl px-4 pr-12 py-2 outline-none focus:ring-2 ring-blue-400">
+                    <input type="password" name="password" id="login_password" required class="w-full bg-[#d6e3eb] rounded-xl px-4 pr-12 py-2 outline-none focus:ring-2 ring-blue-400">
 
-                    <button type="button" onclick="togglePassword('login_password', 'eye_login')"
-                        class="absolute right-4 bottom-2.5 text-blue-600 hover:text-blue-800 z-30 pointer-events-auto">
+                    <button type="button" onclick="togglePasswordLogin('login_password', 'eye_login')" class="absolute right-4 bottom-2.5 z-30 pointer-events-auto" style="color: #2563eb; background: none; border: none;">
                         <i id="eye_login" class="fas fa-eye"></i>
                     </button>
                 </div>
 
-                <button type="submit"
-                    class="w-full bg-[#242552] text-white font-bold py-3 rounded-xl mt-6 hover:bg-blue-600 transition shadow-lg">
+                <button type="submit" class="w-full bg-[#242552] text-white font-bold py-3 rounded-xl mt-6 hover:bg-blue-600 transition shadow-lg">
                     Ingresar
                 </button>
             </form>
@@ -63,19 +56,21 @@
         </div>
 
         <div class="hidden md:block w-1/2">
-            <img src="{{ url_for('static', filename='img/expediente.png') }}" class="h-full w-full object-cover"
-                alt="Medical Background">
+            <img src="{{ url_for('static', filename='img/expediente.png') }}" class="h-full w-full object-cover" alt="Medical Background">
         </div>
     </div>
 
+    <footer class="py-4 px-6 mt-4 text-center text-xs font-bold text-gray-400">
+        &copy; 2026 EUS México. Todos los derechos reservados.
+    </footer>
+
     <script>
-        function togglePassword(inputId, iconId) {
+        function togglePasswordLogin(inputId, iconId) {
             const input = document.getElementById(inputId);
             const icon = document.getElementById(iconId);
 
             if (input.type === 'password') {
                 input.type = 'text';
-                // Esto redefine las clases de forma limpia sin importar lo que hubiera antes
                 icon.className = 'fas fa-eye-slash';
             } else {
                 input.type = 'password';
@@ -88,17 +83,13 @@
             const alert = document.getElementById('alert-box');
             if (alert) alert.style.display = 'none';
         }, 4000);
+
         // Detecta si la página se está cargando desde el caché del botón "Atrás"
         window.addEventListener('pageshow', function (event) {
             if (event.persisted || (typeof window.performance != "undefined" && window.performance.navigation.type === 2)) {
-                // Fuerza al navegador a recargar la página actual desde el servidor
                 window.location.reload();
             }
         });
-
-        <footer class="bg-white border-t border-gray-100 py-4 px-6 mt-12 text-center text-xs font-bold text-gray-400">
-            &copy; 2026 EUS México. Todos los derechos reservados.
-        </footer>
     </script>
 </body>
 
