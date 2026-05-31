@@ -1594,31 +1594,142 @@
             let currentStep = 1;
             const totalSteps = 3;
 
+            // ==========================================
+            // CLAVE: INICIALIZACIÓN AUTOMÁTICA AL CARGAR
+            // ==========================================
+            document.addEventListener("DOMContentLoaded", function () {
+                // Creamos un mapa que conecta cada clave guardada en Mongo con el ID de su 'span/div' en el PDF
+                const mapeoCampos = {
+                    'sexo': 'sexo_val',
+                    'nacimiento': 'fecha_nac_val',
+                    'curp': 'paciente_curp_doc',
+                    'domicilio': 'domicilio_val',
+                    'religion': 'religion_val',
+                    'tipoSangre': 'tipo_sangre_val',
+                    'discapacidad': 'discapacidad_val',
+                    'tipo_discapacidad': 'tipo_disc_val',
+                    'ocupacion': 'ocupacion_val',
+                    'informante': 'informante_val',
+                    'estado_civil': 'est_civil_val',
+                    'temperatura': 'temp_inf',
+                    'frecuencia_cardiaca': 'frec_cardiaca_val',
+                    'presion_arterial': 'pres_arterial_val',
+                    'frecuencia_respiratoria': 'frec_respiratoria_val',
+                    'enfermedades_infancia': 'enf_inf',
+                    'ets': 'ets_inf',
+                    'vih': 'vih_val',
+                    'hepatitis': 'hepatitis_val',
+                    'amebiasis': 'amebiasis_val',
+                    'otra_parasitosis': 'otra_parasitosis_val',
+                    'amigdalitis': 'amigdalitis_val',
+                    'otitis': 'otitis_val',
+                    'sinusitis': 'sinusitis_val',
+                    'fiebre_reumatica': 'fieb_reumatica_val',
+                    'neumonia': 'neumonia_val',
+                    'pulmonia': 'pulmonia_val',
+                    'inf_resp_frec': 'inf_resp_frec_val',
+                    'epitaxis': 'epitaxis_val',
+                    'tuberculosis': 'tuberculosis_val',
+                    'anemia': 'anemia_val',
+                    'hemoptisis': 'hemoptisis_val',
+                    'ulcera_peptica': 'ulcera_peptica_val',
+                    'diabetes_mellitus': 'diabetes_mellitus_val',
+                    'biliar': 'biliar_val',
+                    'ictericia': 'ictericia_val',
+                    'pancreatitis': 'pancreatitis_val',
+                    'hemorragia_digestiva': 'hemorragia_digestiva_val',
+                    'enf_cardvas': 'enf_cardvas_val',
+                    'hiper_arterial': 'hiper_arterial_val',
+                    'enf_hemorra': 'enf_hemorra_val',
+                    'can_o_tum': 'can_o_tum_val',
+                    'tabaquismo': 'tab_val',
+                    'cigarros_diarios': 'cigarros_diarios_val',
+                    'años_fumando': 'años_fumando_val',
+                    'alcoholismo': 'alcoholismo_val',
+                    'copas_semana': 'copas_semana_val',
+                    'años_tomando': 'años_tomando_val',
+                    'drogas': 'drogas_val',
+                    'cuales_drogas': 'cuales_drogas_val',
+                    'transfu_sang': 'transfu_sang_val',
+                    'num_transfusiones': 'num_transfusiones_val',
+                    'traumatismos': 'traumatismos_val',
+                    'cirugias': 'cirugias_val',
+                    'hospitalizaciones': 'hospitalizaciones_val',
+                    'medicamentos': 'medicamentos_val',
+                    'cuales_med_inf': 'cuales_med_inf',
+                    'alimentos': 'alimentos_val',
+                    'cuales_alimentos_inf': 'cuales_alimentos_inf',
+                    'antibioticos': 'antibioticos_val',
+                    'cuales_antibioticos_inf': 'cuales_antibioticos_inf',
+                    'sulfas': 'sulfas_val',
+                    'cuales_sulfas_inf': 'cuales_sulfas_inf',
+                    'yodo': 'yodo_val',
+                    'cuales_yodo_inf': 'cuales_yodo_inf',
+                    'otros': 'otros_val',
+                    'cuales_otros_inf': 'cuales_otros_inf',
+                    'poliomelitis': 'poliomelitis_val',
+                    'rotavirus': 'rotavirus_val',
+                    'triple_viral': 'triple_viral_val',
+                    'pentavalente': 'pentavalente_val',
+                    'dpt': 'dpt_val',
+                    'influenza': 'influenza_val',
+                    'td': 'td_val',
+                    'vph': 'vph_val',
+                    'tdpa': 'tdpa_val',
+                    'covid': 'covid_val',
+                    'mad_alzheimer': 'm_alzheimer',
+                    'mad_diabetes': 'm_diabetes',
+                    'mad_hipertension': 'm_hipertension',
+                    'mad_parkinson': 'm_parkinson',
+                    'mad_cancer': 'm_cancer',
+                    'pad_alzheimer': 'p_alzheimer',
+                    'pad_diabetes': 'p_diabetes',
+                    'pad_hipertension': 'p_hipertension',
+                    'pad_parkinson': 'p_parkinson',
+                    'pad_cancer': 'p_cancer'
+                };
+
+                // Inyectamos de golpe los datos que vienen desde Flask/MongoDB pasados por Jinja2
+                // Nota: Si no hay datos previos, cargará un objeto vacío {} de forma segura
+                const datosPrevios = JSON.parse('{{ expediente|tojson|safe }}') || {};
+
+                // Recorremos el mapa e insertamos los datos en la vista del PDF si existen
+                for (const [claveMongo, idElementoHTML] of Object.entries(mapeoCampos)) {
+                    if (datosPrevios[claveMongo] !== undefined && datosPrevios[claveMongo] !== "") {
+                        const elemento = document.getElementById(idElementoHTML);
+                        if (elemento) {
+                            elemento.innerText = datosPrevios[claveMongo];
+                        }
+                    }
+                }
+
+                // Caso especial para hepatitis que lo tienes dos veces repetido con distintas claves en tu diccionario
+                if (datosPrevios['hepatitis_vac_val']) {
+                    const elHep = document.getElementById('hepatitis_vac_val');
+                    if (elHep) elHep.innerText = datosPrevios['hepatitis_vac_val'];
+                } else if (datosPrevios['hepatitis']) {
+                    const elHepVac = document.getElementById('hepatitis_vac_val');
+                    if (elHepVac) elHepVac.innerText = datosPrevios['hepatitis'];
+                }
+            });
+
             function updateDoc(id, val) {
                 const element = document.getElementById(id);
                 if (element) element.innerText = val || "";
             }
 
             function changeStep(dir) {
-                // Oculta el paso actual
                 document.getElementById(`q-step-${currentStep}`).classList.remove('active');
-
                 currentStep += dir;
-
-                // Validaciones para no salirse del rango de pasos
                 if (currentStep < 1) currentStep = 1;
                 if (currentStep > totalSteps) currentStep = totalSteps;
-
-                // Muestra el nuevo paso
                 document.getElementById(`q-step-${currentStep}`).classList.add('active');
             }
 
             function soloGuardarYVolver() {
                 console.log("Iniciando proceso de guardado...");
 
-                // 1. Validación obligatoria de la CURP
                 const curpElement = document.getElementById('paciente_curp_doc');
-
                 if (!curpElement) {
                     alert("Error crítico: No se encontró el elemento con ID 'paciente_curp_doc'. Verifique su HTML.");
                     return;
@@ -1631,7 +1742,7 @@
                     valores: {
                         sexo: document.getElementById('sexo_val').innerText,
                         nacimiento: document.getElementById('fecha_nac_val').innerText,
-                        curp: document.getElementById('paciente_curp_doc').innerText, // El ID donde se muestra la CURP
+                        curp: document.getElementById('paciente_curp_doc').innerText,
                         domicilio: document.getElementById('domicilio_val').innerText,
                         religion: document.getElementById('religion_val').innerText,
                         tipoSangre: document.getElementById('tipo_sangre_val').innerText,
@@ -1700,7 +1811,7 @@
                         otros: document.getElementById('otros_val').innerText,
                         cuales_otros_inf: document.getElementById('cuales_otros_inf').innerText,
 
-                        hepatitis: document.getElementById('hepatitis_vac_val').innerText,
+                        hepatitis_vac_val: document.getElementById('hepatitis_vac_val').innerText,
                         poliomelitis: document.getElementById('poliomelitis_val').innerText,
                         rotavirus: document.getElementById('rotavirus_val').innerText,
                         triple_viral: document.getElementById('triple_viral_val').innerText,
@@ -1725,8 +1836,6 @@
                     }
                 };
 
-                // Enviamos los datos a Flask
-                // 3. Envío de datos al servidor
                 fetch('/guardar_expediente', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1745,16 +1854,6 @@
                         console.error('Error en la comunicación:', error);
                         alert("Hubo un fallo al contactar con el servidor.");
                     });
-            }
-
-            // ==========================================
-            // 4. ACTUALIZACIÓN EN TIEMPO REAL
-            // ==========================================
-            function updateDoc(id, value) {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.innerText = value || "____________________";
-                }
             }
         </script>
 </body>

@@ -813,16 +813,22 @@ def expediente_paciente(curp):
     
     return render_template('expediente_archivos.html', paciente=paciente, archivos=archivos)
 
+
 @app.route('/expediente/<curp>')
 def ver_expediente(curp):
-    # Buscamos al paciente en la base de datos
+    # 1. Buscamos al paciente en la base de datos
     paciente = db.pacientes.find_one({"curp": curp})
     
     if not paciente:
         return "Paciente no encontrado", 404
         
-    # Pasamos el objeto 'paciente' completo al HTML
-    return render_template('expediente.html', paciente=paciente)
+    # 2. CLAVE: Extraemos el progreso clínico previo que guardó tu función 'guardar_expediente'
+    # Si no existe todavía la clave 'expediente_datos', le pasamos un diccionario vacío {}
+    expediente_guardado = paciente.get('expediente_datos', {})
+        
+    # 3. Pasamos el objeto 'paciente' Y los datos del 'expediente' al HTML
+    return render_template('expediente.html', paciente=paciente, expediente=expediente_guardado)
+
 
 @app.route('/guardar_expediente', methods=['POST'])
 def guardar_expediente():
@@ -843,12 +849,6 @@ def guardar_expediente():
         return jsonify({"status": "success", "message": "Datos guardados"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-    
-@app.route('/expediente/<curp>')
-def abrir_expediente(curp):
-    # Buscamos los datos del paciente para que el asistente ya aparezca con su nombre
-    paciente = db.pacientes.find_one({"curp": curp})
-    return render_template('expediente.html', paciente=paciente)
 
     
 #____________________________Anexos y Archivos____________________________________________
