@@ -77,11 +77,14 @@
                 </div>
                 <h3 class="text-xl font-bold text-[#242552]">Expediente Clínico</h3>
                 <p class="text-gray-400 text-xs mt-2 mb-6">Historial médico, antecedentes y exploración.</p>
-                <a href="{{ url_for('abrir_expediente', curp=paciente.curp) }}"
+                
+                <!-- CORRECCIÓN AQUÍ: Cambiado 'abrir_expediente' por 'expediente' -->
+                <a href="{{ url_for('expediente', curp=paciente.curp) }}"
                     class="block w-full text-center bg-[#242552] text-white py-3 rounded-xl font-bold hover:bg-opacity-90 transition">
                     Gestionar
                 </a>
             </div>
+            
             <div class="bg-white rounded-md p-6 shadow-lg border hover:shadow-xl transition">
                 <div
                     class="h-24 bg-purple-50 rounded-2xl flex items-center justify-center mb-4 text-purple-200 text-4xl">
@@ -94,6 +97,7 @@
                     <i class="fas fa-folder-open mr-2"></i> Ver Anexos
                 </a>
             </div>
+            
             <div class="bg-white rounded-md p-6 shadow-lg border hover:shadow-xl transition">
                 <div
                     class="h-24 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 text-blue-400 text-4xl w-full">
@@ -119,6 +123,7 @@
                     </a>
                 </form>
             </div>
+            
             <div
                 class="bg-white rounded-md p-6 shadow-lg border hover:shadow-xl transition flex flex-col border-blue-100">
                 <div
@@ -139,6 +144,7 @@
 
         </div>
     </main>
+    
     <script>
         function toggleDropdown() {
             const dropdown = document.getElementById('profileDropdown');
