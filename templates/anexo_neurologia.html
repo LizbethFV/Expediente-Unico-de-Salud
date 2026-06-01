@@ -1379,7 +1379,7 @@
 
                             const datosPreviosAnexo = {% if anexo %}{{ anexo| tojson | safe }}{% else %}{}{% endif %};
 
-                        // 2. Ahora sí, el bucle para rellenar los datos queda libre y funcionará SIEMPRE
+                        // Ahora sí, el bucle para rellenar los datos queda libre y funcionará SIEMPRE
                         for (const [claveMongo, idElementoHTML] of Object.entries(mapeoNeurologia)) {
                             if (datosPreviosAnexo[claveMongo] !== undefined && datosPreviosAnexo[claveMongo] !== "") {
                                 const elemento = document.getElementById(idElementoHTML);
@@ -1388,6 +1388,7 @@
                                 }
                             }
                         }
+                    }); // <-- CORRECCIÓN AQUÍ: Cerramos correctamente el DOMContentLoaded
 
                         function changeStep(dir) {
                             let nextStep = currentStep + dir;
