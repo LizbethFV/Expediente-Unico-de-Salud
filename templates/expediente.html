@@ -1592,7 +1592,7 @@
         </div>
         <script>
             let currentStep = 1;
-            const totalSteps = 3;
+            const totalSteps = 6;
 
             // ==========================================
             // CLAVE: INICIALIZACIÓN AUTOMÁTICA AL CARGAR
@@ -1691,26 +1691,26 @@
 
                 // Inyectamos de golpe los datos que vienen desde Flask/MongoDB pasados por Jinja2
                 // Nota: Si no hay datos previos, cargará un objeto vacío {} de forma segura
-                const datosPrevios = JSON.parse('{{ expediente|tojson|safe }}') || {};
+                const datosPrevios = {% if expediente %}{{ expediente| tojson | safe }}{% else %}{}{% endif %};
 
-                // Recorremos el mapa e insertamos los datos en la vista del PDF si existen
-                for (const [claveMongo, idElementoHTML] of Object.entries(mapeoCampos)) {
-                    if (datosPrevios[claveMongo] !== undefined && datosPrevios[claveMongo] !== "") {
-                        const elemento = document.getElementById(idElementoHTML);
-                        if (elemento) {
-                            elemento.innerText = datosPrevios[claveMongo];
-                        }
+            // Recorremos el mapa e insertamos los datos en la vista del PDF si existen
+            for (const [claveMongo, idElementoHTML] of Object.entries(mapeoCampos)) {
+                if (datosPrevios[claveMongo] !== undefined && datosPrevios[claveMongo] !== "") {
+                    const elemento = document.getElementById(idElementoHTML);
+                    if (elemento) {
+                        elemento.innerText = datosPrevios[claveMongo];
                     }
                 }
+            }
 
-                // Caso especial para hepatitis que lo tienes dos veces repetido con distintas claves en tu diccionario
-                if (datosPrevios['hepatitis_vac_val']) {
-                    const elHep = document.getElementById('hepatitis_vac_val');
-                    if (elHep) elHep.innerText = datosPrevios['hepatitis_vac_val'];
-                } else if (datosPrevios['hepatitis']) {
-                    const elHepVac = document.getElementById('hepatitis_vac_val');
-                    if (elHepVac) elHepVac.innerText = datosPrevios['hepatitis'];
-                }
+            // Caso especial para hepatitis que lo tienes dos veces repetido con distintas claves en tu diccionario
+            if (datosPrevios['hepatitis_vac_val']) {
+                const elHep = document.getElementById('hepatitis_vac_val');
+                if (elHep) elHep.innerText = datosPrevios['hepatitis_vac_val'];
+            } else if (datosPrevios['hepatitis']) {
+                const elHepVac = document.getElementById('hepatitis_vac_val');
+                if (elHepVac) elHepVac.innerText = datosPrevios['hepatitis'];
+            }
             });
 
             function updateDoc(id, val) {

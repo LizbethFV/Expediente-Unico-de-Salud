@@ -1301,25 +1301,105 @@
                         let currentStep = 1;
                         const totalSteps = 5;
 
+                        // ===================================================
+                        // RECUPERACIÓN AUTOMÁTICA AL CARGAR EL ANEXO
+                        // ===================================================
+                        document.addEventListener("DOMContentLoaded", function () {
+                            // Mapeo exhaustivo de tus campos de neurología con los IDs del PDF
+                            const mapeoNeurologia = {
+                                'nivel_conciencia': 'nivel_conciencia_val',
+                                'escala_glasgowo': 'escala_glasgowo_val',
+                                'escala_gasgowver': 'escala_gasgowver_val',
+                                'escala_gasgowmot': 'escala_gasgowmot_val',
+                                'total_eg': 'total_eg_val',
+                                'orientacion_tiempo': 'orientacion_tiempo_val',
+                                'orientacion_espacio': 'orientacion_espacio_val',
+                                'orientacion_persona': 'orientacion_persona_val',
+                                'atencion_concentracion': 'atencion_concentracion_val',
+                                'memoria_corto_plazo': 'memoria_corto_plazo_val',
+                                'memoria_largo_plazo': 'memoria_largo_plazo_val',
+                                'lenguaje_fluidez': 'lenguaje_fluidez_val',
+                                'lenguaje_comprension': 'lenguaje_comprension_val',
+                                'lenguaje_nominacion': 'lenguaje_nominacion_val',
+                                'calculo_juicio': 'calculo_juicio_val',
+                                'olfatorio': 'olfatorio_val',
+                                'optico_agudeza': 'optico_agudeza_val',
+                                'optico_campos': 'optico_campos_val',
+                                'motricidad_ocular': 'motricidad_ocular_val',
+                                'trigemino_sensativo': 'trigemino_sensativo_val',
+                                'trigemino_motriz': 'trigemino_motriz_val',
+                                'facial_simetria': 'facial_simetria_val',
+                                'vestibulococlear': 'vestibulococlear_val',
+                                'vago_glosofaringeo': 'vago_glosofaringeo_val',
+                                'accesorio': 'accesorio_val',
+                                'hipogloso': 'hipogloso_val',
+                                'fondo_ojo': 'fondo_ojo_val',
+                                'trofismon': 'trofismon_val',
+                                'trofismo_h': 'trofismo_h_val',
+                                'trofismo_a': 'trofismo_a_val',
+                                'tono_normal': 'tono_normal_val',
+                                'tono_espasticidad': 'tono_espasticidad_val',
+                                'tono_rigidez': 'tono_rigidez_val',
+                                'ms_derecho_proximal': 'ms_derecho_proximal_val',
+                                'ms_derecho_distal': 'ms_derecho_distal_val',
+                                'ms_izquierdo_proximal': 'ms_izquierdo_proximal_val',
+                                'ms_izquierdo_distal': 'ms_izquierdo_distal_val',
+                                'bicipital': 'bicipital_val',
+                                'tricipital': 'tricipital_val',
+                                'estiloradial': 'estiloradial_val',
+                                'rotuliano': 'rotuliano_val',
+                                'aquileo': 'aquileo_val',
+                                'babinski': 'babinski_val',
+                                'hoffmann': 'hoffmann_val',
+                                'otros_rp': 'otros_rp_val',
+                                'sensibilidad_tacto': 'sensibilidad_tacto_val',
+                                'sensibilidad_dolor': 'sensibilidad_dolor_val',
+                                'sensibilidad_temperatura': 'sensibilidad_temperatura_val',
+                                'sensibilidad_propiocepcion': 'sensibilidad_propiocepcion_val',
+                                'sensibilidad_vibracion': 'sensibilidad_vibracion_val',
+                                'coordinacion_dedo_nariz': 'coordinacion_dedo_nariz_val',
+                                'coordinacion_talon_rodilla': 'coordinacion_talon_rodilla_val',
+                                'coordinacion_diadococinesia': 'coordinacion_diadococinesia_val',
+                                'romberg': 'romberg_val',
+                                'marcha_libre': 'marcha_libre_val',
+                                'marcha_ataxia': 'marcha_ataxia_val',
+                                'marcha_espastica': 'marcha_espastica_val',
+                                'marcha_hemiparetica': 'marcha_hemiparetica_val',
+                                'marcha_parkinsoniana': 'marcha_parkinsoniana_val',
+                                'mov_anormal_temblor': 'marcha_anormal_temblor_val',
+                                'mov_anormal_coreicos': 'marcha_anormal_coreicos_val',
+                                'mov_anormal_distonias': 'marcha_anormal_distonias_val',
+                                'mov_anormal_otros': 'marcha_anormal_otros_val',
+                                'sindrome_etiologico': 'sindrome_etiologico_val',
+                                'sindrome_topografico': 'sindrome_topografico_val',
+                                'sindrome_nosologico': 'sindrome_nosologico_val',
+                                'estudios_solicitados': 'estudios_solicitados_val',
+                                'tratamiento_pronostico': 'tratamiento_pronostico_val'
+                            };
+
+                            const datosPreviosAnexo = {% if anexo %}{{ anexo| tojson | safe }}{% else %}{}{% endif %};
+
+                        // 2. Ahora sí, el bucle para rellenar los datos queda libre y funcionará SIEMPRE
+                        for (const [claveMongo, idElementoHTML] of Object.entries(mapeoNeurologia)) {
+                            if (datosPreviosAnexo[claveMongo] !== undefined && datosPreviosAnexo[claveMongo] !== "") {
+                                const elemento = document.getElementById(idElementoHTML);
+                                if (elemento) {
+                                    elemento.innerText = datosPreviosAnexo[claveMongo];
+                                }
+                            }
+                        }
+
                         function changeStep(dir) {
-                            // Calculamos el paso al que queremos ir
                             let nextStep = currentStep + dir;
-
-                            // Verificamos que el paso exista (entre 1 y 3)
                             if (nextStep >= 1 && nextStep <= totalSteps) {
-
-                                // 1. Ocultar el paso actual
                                 const currentEl = document.getElementById(`q-step-${currentStep}`);
                                 if (currentEl) currentEl.classList.remove('active');
 
-                                // 2. Actualizar la variable global
                                 currentStep = nextStep;
 
-                                // 3. Mostrar el nuevo paso
                                 const nextEl = document.getElementById(`q-step-${currentStep}`);
                                 if (nextEl) nextEl.classList.add('active');
 
-                                // 4. Hacer scroll hacia arriba del asistente para no perderse
                                 const scrollContainer = document.querySelector('.overflow-y-auto');
                                 if (scrollContainer) scrollContainer.scrollTop = 0;
                             }
@@ -1335,7 +1415,6 @@
                             }
                             const curpPaciente = curpElement.innerText.trim();
 
-                            // 2. RECOLECCIÓN DE VALORES (Asegúrate de que los IDs existan en tu HTML)
                             const datosNeurologia = {
                                 curp: curpPaciente,
                                 valores: {
@@ -1354,7 +1433,6 @@
                                     lenguaje_comprension: document.getElementById('lenguaje_comprension_val')?.innerText || "",
                                     lenguaje_nominacion: document.getElementById('lenguaje_nominacion_val')?.innerText || "",
                                     calculo_juicio: document.getElementById('calculo_juicio_val')?.innerText || "",
-
                                     olfatorio: document.getElementById('olfatorio_val')?.innerText || "",
                                     optico_agudeza: document.getElementById('optico_agudeza_val')?.innerText || "",
                                     optico_campos: document.getElementById('optico_campos_val')?.innerText || "",
@@ -1367,7 +1445,6 @@
                                     accesorio: document.getElementById('accesorio_val')?.innerText || "",
                                     hipogloso: document.getElementById('hipogloso_val')?.innerText || "",
                                     fondo_ojo: document.getElementById('fondo_ojo_val')?.innerText || "",
-
                                     trofismon: document.getElementById('trofismon_val')?.innerText || "",
                                     trofismo_h: document.getElementById('trofismo_h_val')?.innerText || "",
                                     trofismo_a: document.getElementById('trofismo_a_val')?.innerText || "",
@@ -1386,7 +1463,6 @@
                                     babinski: document.getElementById('babinski_val')?.innerText || "",
                                     hoffmann: document.getElementById('hoffmann_val')?.innerText || "",
                                     otros_rp: document.getElementById('otros_rp_val')?.innerText || "",
-
                                     sensibilidad_tacto: document.getElementById('sensibilidad_tacto_val')?.innerText || "",
                                     sensibilidad_dolor: document.getElementById('sensibilidad_dolor_val')?.innerText || "",
                                     sensibilidad_temperatura: document.getElementById('sensibilidad_temperatura_val')?.innerText || "",
@@ -1409,13 +1485,14 @@
                                     sindrome_topografico: document.getElementById('sindrome_topografico_val')?.innerText || "",
                                     sindrome_nosologico: document.getElementById('sindrome_nosologico_val')?.innerText || "",
                                     estudios_solicitados: document.getElementById('estudios_solicitados_val')?.innerText || "",
-                                    tratamiento_pronostico: document.getElementById('tratamiento_pronostico_val')?.innerText || ""
+                                    treatment_pronostico: document.getElementById('tratamiento_pronostico_val')?.innerText || ""
                                 }
                             };
+
                             fetch('/guardar_anexo_neurologia', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(datosNeurologia) // Asegúrate de que este objeto tenga 'curp' y 'valores'
+                                body: JSON.stringify(datosNeurologia)
                             })
                                 .then(response => response.json())
                                 .then(data => {
@@ -1431,10 +1508,10 @@
                                     alert("Hubo un fallo al contactar con el servidor.");
                                 });
                         }
+
                         function updateDoc(id, value) {
                             const el = document.getElementById(id);
                             if (el) {
-                                // Si el valor está vacío, ponemos una línea para que no desaparezca el campo
                                 el.innerText = value.toUpperCase() || "____________________";
                             }
                         }
