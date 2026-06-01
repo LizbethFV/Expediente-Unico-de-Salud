@@ -79,7 +79,7 @@
                 <p class="text-gray-400 text-xs mt-2 mb-6">Historial médico, antecedentes y exploración.</p>
                 
                 <!-- CORRECCIÓN AQUÍ: Cambiado 'abrir_expediente' por 'expediente' -->
-                <a href="{{ url_for('expediente', curp=paciente.curp) }}"
+                <a href="{{ url_for('ver_expediente', curp=paciente.curp) }}"
                     class="block w-full text-center bg-[#242552] text-white py-3 rounded-xl font-bold hover:bg-opacity-90 transition">
                     Gestionar
                 </a>
